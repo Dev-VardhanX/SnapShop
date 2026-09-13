@@ -1,7 +1,21 @@
+import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.inputStream().use {
+        localProperties.load(it)
+    }
+}
+
+val serpApiKey = localProperties.getProperty("SERPAPI_KEY", "")
+val geminiApiKey = localProperties.getProperty("GEMINI_API_KEY", "")
 
 android {
     namespace = "com.snapshop.app"
@@ -24,6 +38,30 @@ android {
             optimization {
                 enable = false
             }
+
+            buildConfigField(
+                "String",
+                "SERPAPI_KEY",
+                "\"$serpApiKey\""
+            )
+            buildConfigField(
+                "String",
+                "GEMINI_API_KEY",
+                "\"$geminiApiKey\""
+            )
+        }
+
+        debug {
+            buildConfigField(
+                "String",
+                "SERPAPI_KEY",
+                "\"$serpApiKey\""
+            )
+            buildConfigField(
+                "String",
+                "GEMINI_API_KEY",
+                "\"$geminiApiKey\""
+            )
         }
     }
     compileOptions {
@@ -32,6 +70,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -51,4 +90,33 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
+
+    // Room
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+
+    // Retrofit
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+
+    // OkHttp
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
+
+    // Coil
+    implementation(libs.coil.compose)
+
+    // Coroutines
+    implementation(libs.kotlinx.coroutines.android)
+
+    // CameraX
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+
+    implementation(libs.androidx.compose.material.icons.extended)
 }
