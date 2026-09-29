@@ -60,6 +60,8 @@ data class GeminiResponsePart(
 // --- Structured Product Result from Gemini ---
 
 data class GeminiProductAnalysisDto(
+    @SerializedName("productTitle")
+    val productTitle: String? = null,
     @SerializedName("category")
     val category: String? = null,
     @SerializedName("productType")
@@ -70,6 +72,11 @@ data class GeminiProductAnalysisDto(
     val model: String? = null,
     @SerializedName("color")
     val color: String? = null,
+    @SerializedName("targetAudience")
+    val targetAudience: String? = null,
+    @SerializedName("searchQueries")
+    val searchQueries: List<String>? = null,
     @SerializedName("keywords")
     val keywords: List<String>? = null
 )
+

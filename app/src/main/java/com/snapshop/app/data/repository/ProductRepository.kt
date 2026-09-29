@@ -9,7 +9,6 @@ import com.snapshop.app.data.local.entity.WishlistEntity
 import com.snapshop.app.data.remote.RetrofitClient
 import com.snapshop.app.domain.Product
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class ProductRepository(context: Context) {
@@ -21,25 +20,20 @@ class ProductRepository(context: Context) {
     private val recentlyViewedDao = db.recentlyViewedDao()
 
     suspend fun searchProducts(query: String, saveToHistory: Boolean = true): List<Product> {
-        val trimmedQuery = query.trim()
-        if (trimmedQuery.isEmpty()) return emptyList()
-
-        Log.d("SnapShopSearch", "==================================================")
-        Log.d("SnapShopSearch", "SEARCH: START")
-        Log.d("SnapShopSearch", "SEARCH: QUERY: $trimmedQuery")
+        val sanitizedQuery = sanitizeSearchQuery(query)
+        if (sanitizedQuery.isEmpty()) return emptyList()
 
         if (saveToHistory) {
             try {
-                historyDao.recordSearch(trimmedQuery)
+                historyDao.recordSearch(sanitizedQuery)
             } catch (e: Exception) {
                 Log.e("SnapShopSearch", "Failed to record search history: ${e.message}")
             }
         }
 
         try {
-            val response = api.searchProducts(query = trimmedQuery)
-            val results = response.shoppingResults.orEmpty()
-            Log.d("SnapShopSearch", "SEARCH: RAW RESULT COUNT: ${results.size}")
+            val response = api.searchProducts(query = sanitizedQuery)
+            val results = response.allShoppingResults
 
             val wishlistIds = try {
                 wishlistDao.getWishlistedProductIdsSync().toSet()
@@ -48,27 +42,47 @@ class ProductRepository(context: Context) {
                 emptySet()
             }
 
-            val mappedProducts = results.map { dto ->
+            return results.map { dto ->
                 val pid = dto.productId ?: dto.title?.hashCode()?.toString() ?: ""
+                val rawUrl = when {
+                    !dto.link.isNullOrBlank() -> dto.link
+                    !dto.productLink.isNullOrBlank() -> dto.productLink
+                    !dto.productId.isNullOrBlank() -> "https://www.google.com/shopping/product/${dto.productId}?gl=in&hl=en"
+                    !dto.title.isNullOrBlank() -> "https://www.google.com/search?q=${java.net.URLEncoder.encode(dto.title, "UTF-8")}&tbm=shop"
+                    else -> null
+                }
+
+                val resolvedSource = when {
+                    !dto.source.isNullOrBlank() -> dto.source
+                    dto.multipleSources == true -> "Multiple Stores"
+                    else -> "Google Shopping"
+                }
+
+                val resolvedImage = dto.thumbnail?.takeIf { it.isNotBlank() }
+                    ?: dto.serpapiThumbnail?.takeIf { it.isNotBlank() }
+
                 Product(
                     id = dto.productId,
                     title = dto.title,
                     price = dto.price,
-                    source = dto.source,
-                    imageUrl = dto.thumbnail,
-                    buyUrl = dto.link,
+                    source = resolvedSource,
+                    imageUrl = resolvedImage,
+                    buyUrl = rawUrl,
                     rating = dto.rating,
                     reviewsCount = dto.reviews,
                     isWishlisted = wishlistIds.contains(pid)
                 )
             }
-
-            Log.d("SnapShopSearch", "SEARCH: MAPPED PRODUCT COUNT: ${mappedProducts.size}")
-            return mappedProducts
         } catch (e: Exception) {
-            Log.e("SnapShopSearch", "SEARCH ERROR: ${e.message}", e)
+            Log.e("SnapShopSearch", "Search error for '$sanitizedQuery': ${e.message}", e)
             throw e
         }
+    }
+
+    private fun sanitizeSearchQuery(raw: String): String {
+        return raw.replace(Regex("[\"\'(){}\\[\\]+:*#&/\\-_]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
     }
 
     fun getWishlistProducts(): Flow<List<Product>> {
@@ -84,12 +98,12 @@ class ProductRepository(context: Context) {
     suspend fun toggleWishlist(product: Product): Boolean {
         val pid = product.safeId()
         val currentlyWishlisted = wishlistDao.isWishlistedSync(pid)
-        if (currentlyWishlisted) {
+        return if (currentlyWishlisted) {
             wishlistDao.removeFromWishlist(pid)
-            return false
+            false
         } else {
             wishlistDao.addToWishlist(WishlistEntity.fromProduct(product))
-            return true
+            true
         }
     }
 
@@ -113,6 +127,10 @@ class ProductRepository(context: Context) {
         historyDao.clearAll()
     }
 
+    suspend fun clearRecentlyViewed() {
+        recentlyViewedDao.clearAll()
+    }
+
     suspend fun recordProductView(product: Product) {
         recentlyViewedDao.recordProductView(RecentlyViewedEntity.fromProduct(product))
     }
@@ -121,7 +139,7 @@ class ProductRepository(context: Context) {
         return recentlyViewedDao.getRecentlyViewed().map { list ->
             val wishlistIds = try {
                 wishlistDao.getWishlistedProductIdsSync().toSet()
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 emptySet()
             }
             list.map { entity ->

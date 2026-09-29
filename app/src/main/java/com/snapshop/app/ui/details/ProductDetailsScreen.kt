@@ -1,7 +1,6 @@
 package com.snapshop.app.ui.details
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,24 +19,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Store
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -46,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -54,7 +48,24 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.snapshop.app.domain.Product
-import com.snapshop.app.ui.components.ProductCard
+import com.snapshop.app.ui.components.isValidMerchantUrl
+import com.snapshop.app.ui.theme.AccentMintDark
+import com.snapshop.app.ui.theme.AmberStar
+import com.snapshop.app.ui.theme.BackgroundLight
+import com.snapshop.app.ui.theme.ClayBadge
+import com.snapshop.app.ui.theme.ClayButton
+import com.snapshop.app.ui.theme.ClayButtonVariant
+import com.snapshop.app.ui.theme.ClayCard
+import com.snapshop.app.ui.theme.ClayIconButton
+import com.snapshop.app.ui.theme.PrimaryIndigo
+import com.snapshop.app.ui.theme.PrimaryIndigoContainer
+import com.snapshop.app.ui.theme.RedHeart
+import com.snapshop.app.ui.theme.SoftRed
+import com.snapshop.app.ui.theme.SoftYellow
+import com.snapshop.app.ui.theme.SurfaceLight
+import com.snapshop.app.ui.theme.SurfaceVariantLight
+import com.snapshop.app.ui.theme.TextPrimaryLight
+import com.snapshop.app.ui.theme.TextSecondaryLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +73,7 @@ fun ProductDetailsScreen(
     product: Product,
     onBackClick: () -> Unit,
     onRelatedProductClick: (Product) -> Unit,
+    onOpenMerchantLink: (String?) -> Unit = {},
     viewModel: ProductDetailsViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -72,66 +84,63 @@ fun ProductDetailsScreen(
     }
 
     val currentProduct = uiState.product ?: product
+    val isDealValid = isValidMerchantUrl(currentProduct.buyUrl)
 
     Scaffold(
+        containerColor = BackgroundLight,
         topBar = {
-            TopAppBar(
-                title = { Text("Product Details", fontWeight = FontWeight.Bold, fontSize = 18.sp) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            DetailsTopBar(
+                title = currentProduct.title ?: "Product Details",
+                isWishlisted = uiState.isWishlisted,
+                onBackClick = onBackClick,
+                onWishlistToggle = { viewModel.toggleWishlist() },
+                onShareClick = {
+                    val shareText = "Compare prices for ${currentProduct.title}: ${currentProduct.buyUrl ?: "via SnapShop"}"
+                    val sendIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                        type = "text/plain"
                     }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.toggleWishlist() }) {
-                        Icon(
-                            imageVector = if (uiState.isWishlisted) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = "Wishlist",
-                            tint = if (uiState.isWishlisted) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    IconButton(onClick = {
-                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, "Check out ${currentProduct.title}: ${currentProduct.buyUrl}")
-                        }
-                        context.startActivity(Intent.createChooser(shareIntent, "Share Product"))
-                    }) {
-                        Icon(imageVector = Icons.Default.Share, contentDescription = "Share")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                    context.startActivity(Intent.createChooser(sendIntent, "Share Product Deal"))
+                }
             )
         },
         bottomBar = {
+            // Floating Clay CTA Bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(16.dp)
+                    .background(BackgroundLight)
+                    .padding(horizontal = 20.dp, vertical = 14.dp)
             ) {
-                Button(
-                    onClick = {
-                        val url = currentProduct.buyUrl
-                        if (!url.isNull_or_blank()) {
-                            val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            context.startActivity(browserIntent)
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    enabled = !currentProduct.buyUrl.isNull_or_blank()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Default.OpenInNew, contentDescription = null)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "View Deal / Buy Now",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                    // Secondary: Wishlist toggle
+                    ClayIconButton(
+                        onClick = { viewModel.toggleWishlist() },
+                        icon = if (uiState.isWishlisted) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Save to Wishlist",
+                        size = 54.dp,
+                        iconSize = 24.dp,
+                        shape = RoundedCornerShape(18.dp),
+                        containerColor = if (uiState.isWishlisted) SoftRed else SurfaceLight,
+                        contentColor = if (uiState.isWishlisted) RedHeart else TextSecondaryLight
+                    )
+
+                    // Primary CTA: View Deal
+                    ClayButton(
+                        onClick = { onOpenMerchantLink(currentProduct.buyUrl) },
+                        text = if (isDealValid) "View Deal" else "Deal Unavailable",
+                        icon = Icons.AutoMirrored.Filled.OpenInNew,
+                        variant = if (isDealValid) ClayButtonVariant.Primary else ClayButtonVariant.Secondary,
+                        enabled = isDealValid,
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(54.dp)
                     )
                 }
             }
@@ -141,89 +150,121 @@ fun ProductDetailsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            // Product Hero Image Card
+            // 1. Hero Product Image Showcase
             item {
-                Card(
+                Spacer(modifier = Modifier.height(4.dp))
+                ClayCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(26.dp),
+                    color = SurfaceLight,
+                    elevation = 6.dp
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(280.dp)
-                            .padding(16.dp),
+                            .height(290.dp)
+                            .padding(20.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        AsyncImage(
-                            model = currentProduct.imageUrl,
-                            contentDescription = currentProduct.title,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
+                        val fallback = rememberVectorPainter(Icons.Default.ShoppingBag)
+                        if (!currentProduct.imageUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = currentProduct.imageUrl,
+                                contentDescription = currentProduct.title,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit,
+                                placeholder = fallback,
+                                error = fallback
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingBag,
+                                contentDescription = null,
+                                tint = TextSecondaryLight.copy(alpha = 0.4f),
+                                modifier = Modifier.size(64.dp)
+                            )
+                        }
                     }
                 }
             }
 
-            // Title, Merchant Source, Price, Rating
+            // 2. Main Title, Price & Rating Card
             item {
-                Card(
+                ClayCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(22.dp),
+                    color = SurfaceLight,
+                    elevation = 5.dp
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
                     ) {
+                        // Store / Merchant Tag Row
                         currentProduct.source?.takeIf { it.isNotBlank() }?.let { source ->
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Store,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
+                                ClayBadge(
                                     text = source.uppercase(),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    backgroundColor = PrimaryIndigoContainer,
+                                    textColor = PrimaryIndigo,
+                                    icon = Icons.Default.Store
                                 )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Verified,
+                                        contentDescription = null,
+                                        tint = AccentMintDark,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Verified Listing",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = AccentMintDark
+                                    )
+                                }
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                         }
 
+                        // Product Title
                         Text(
                             text = currentProduct.title ?: "Product Details",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                lineHeight = 26.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 19.sp,
+                            lineHeight = 25.sp,
+                            color = TextPrimaryLight
                         )
 
                         Spacer(modifier = Modifier.height(14.dp))
 
+                        // Price and Rating Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            currentProduct.price?.takeIf { it.isNotBlank() }?.let { price ->
+                            Column {
+                                currentProduct.price?.takeIf { it.isNotBlank() }?.let { price ->
+                                    Text(
+                                        text = price,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = AccentMintDark
+                                    )
+                                }
                                 Text(
-                                    text = price,
-                                    style = MaterialTheme.typography.headlineMedium.copy(
-                                        fontWeight = FontWeight.ExtraBold
-                                    ),
-                                    color = MaterialTheme.colorScheme.tertiary
+                                    text = "Best store offer detected",
+                                    fontSize = 11.sp,
+                                    color = TextSecondaryLight
                                 )
                             }
 
@@ -231,27 +272,28 @@ fun ProductDetailsScreen(
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(SoftYellow)
                                         .padding(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Star,
                                         contentDescription = null,
-                                        tint = Color(0xFFFFB800),
-                                        modifier = Modifier.size(18.dp)
+                                        tint = AmberStar,
+                                        modifier = Modifier.size(16.dp)
                                     )
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Spacer(modifier = Modifier.width(5.dp))
                                     Text(
-                                        text = "$rating",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp
+                                        text = String.format("%.1f", rating),
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 14.sp,
+                                        color = TextPrimaryLight
                                     )
                                     currentProduct.reviewsCount?.let { count ->
                                         Text(
                                             text = " ($count)",
                                             fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = TextSecondaryLight
                                         )
                                     }
                                 }
@@ -261,20 +303,24 @@ fun ProductDetailsScreen(
                 }
             }
 
-            // Merchant Store & Deal Card
+            // 3. Store Listing & Price Protection Guarantee Card
             item {
-                Card(
+                ClayCard(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    shape = RoundedCornerShape(22.dp),
+                    color = SurfaceLight,
+                    elevation = 4.dp
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(18.dp)
                     ) {
                         Text(
-                            text = "Price & Store Listing",
+                            text = "Merchant & Listing Info",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
+                            fontSize = 15.sp,
+                            color = TextPrimaryLight
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -284,25 +330,45 @@ fun ProductDetailsScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Column {
-                                Text(
-                                    text = currentProduct.source ?: "Google Shopping Partner",
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 15.sp
-                                )
-                                Text(
-                                    text = "Verified Store Listing",
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(PrimaryIndigoContainer),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Store,
+                                        contentDescription = null,
+                                        tint = PrimaryIndigo,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column {
+                                    Text(
+                                        text = currentProduct.source ?: "Online Partner Store",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = TextPrimaryLight
+                                    )
+                                    Text(
+                                        text = "Official Store Partner",
+                                        fontSize = 11.sp,
+                                        color = TextSecondaryLight
+                                    )
+                                }
                             }
 
                             currentProduct.price?.let { price ->
                                 Text(
                                     text = price,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 17.sp,
-                                    color = MaterialTheme.colorScheme.tertiary
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 16.sp,
+                                    color = TextPrimaryLight
                                 )
                             }
                         }
@@ -310,27 +376,27 @@ fun ProductDetailsScreen(
                 }
             }
 
-            // Related / Similar Products Price Comparison Section
+            // 4. Compare Similar Listings Section
             if (uiState.relatedProducts.isNotEmpty()) {
                 item {
+                    Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Compare Similar Listings & Prices",
+                        text = "Compare Similar Offers & Prices",
                         fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp,
-                        color = MaterialTheme.colorScheme.onBackground
+                        fontSize = 16.sp,
+                        color = TextPrimaryLight
                     )
-
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 items(
-                    items = uiState.relatedProducts.take(5),
+                    items = uiState.relatedProducts.take(6),
                     key = { it.safeId() }
                 ) { related ->
-                    ProductCard(
+                    ClayOfferCard(
                         product = related,
-                        onProductClick = onRelatedProductClick,
-                        onWishlistToggle = {}
+                        onClick = { onRelatedProductClick(related) },
+                        onViewDeal = { onOpenMerchantLink(related.buyUrl) }
                     )
                 }
             }
@@ -342,4 +408,154 @@ fun ProductDetailsScreen(
     }
 }
 
-private fun String?.isNull_or_blank(): Boolean = this == null || this.trim().isEmpty()
+/**
+ * Top App Bar for Product Details with back, wishlist, and share buttons.
+ */
+@Composable
+private fun DetailsTopBar(
+    title: String,
+    isWishlisted: Boolean,
+    onBackClick: () -> Unit,
+    onWishlistToggle: () -> Unit,
+    onShareClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ClayIconButton(
+            onClick = onBackClick,
+            icon = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = "Back",
+            size = 42.dp,
+            iconSize = 20.dp
+        )
+
+        Text(
+            text = "Product Details",
+            fontWeight = FontWeight.Bold,
+            fontSize = 17.sp,
+            color = TextPrimaryLight
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ClayIconButton(
+                onClick = onWishlistToggle,
+                icon = if (isWishlisted) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                contentDescription = "Save to Wishlist",
+                size = 42.dp,
+                iconSize = 20.dp,
+                containerColor = if (isWishlisted) SoftRed else SurfaceLight,
+                contentColor = if (isWishlisted) RedHeart else TextSecondaryLight
+            )
+
+            ClayIconButton(
+                onClick = onShareClick,
+                icon = Icons.Default.Share,
+                contentDescription = "Share",
+                size = 42.dp,
+                iconSize = 20.dp
+            )
+        }
+    }
+}
+
+/**
+ * Clean Clay Offer Card for comparing merchant offers.
+ */
+@Composable
+private fun ClayOfferCard(
+    product: Product,
+    onClick: () -> Unit,
+    onViewDeal: () -> Unit
+) {
+    ClayCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = SurfaceLight,
+        elevation = 3.dp,
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SurfaceVariantLight),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!product.imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = product.imageUrl,
+                        contentDescription = product.title,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(4.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.ShoppingBag,
+                        contentDescription = null,
+                        tint = TextSecondaryLight.copy(alpha = 0.4f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                product.source?.let { store ->
+                    ClayBadge(
+                        text = store.uppercase(),
+                        backgroundColor = SurfaceVariantLight,
+                        textColor = TextSecondaryLight
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                }
+
+                Text(
+                    text = product.title ?: "Similar Product",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimaryLight,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(3.dp))
+
+                product.price?.let { price ->
+                    Text(
+                        text = price,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = AccentMintDark
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            ClayButton(
+                onClick = onViewDeal,
+                text = "Deal",
+                icon = Icons.AutoMirrored.Filled.OpenInNew,
+                variant = ClayButtonVariant.Secondary,
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+            )
+        }
+    }
+}

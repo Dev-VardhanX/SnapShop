@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.snapshop.app.data.repository.ProductRepository
 import com.snapshop.app.domain.Product
+import com.snapshop.app.ui.components.PriceRangeFilter
 import com.snapshop.app.ui.components.SortOption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,11 +18,20 @@ data class ProductSearchUiState(
     val rawProducts: List<Product> = emptyList(),
     val displayedProducts: List<Product> = emptyList(),
     val isLoading: Boolean = false,
+    val loadingMessage: String = "Finding products...",
     val error: String? = null,
+    val isFromVisualSearch: Boolean = false,
     val selectedSort: SortOption = SortOption.RECOMMENDED,
     val minRatingFilter: Double = 0.0,
     val selectedMerchant: String? = null,
+    val priceRangeFilter: PriceRangeFilter = PriceRangeFilter.ALL,
     val availableMerchants: List<String> = emptyList()
+)
+
+data class AppliedFilters(
+    val minRating: Double = 0.0,
+    val merchant: String? = null,
+    val priceRange: PriceRangeFilter = PriceRangeFilter.ALL
 )
 
 class ProductSearchViewModel(application: Application) : AndroidViewModel(application) {
@@ -31,10 +41,13 @@ class ProductSearchViewModel(application: Application) : AndroidViewModel(applic
     private val _uiState = MutableStateFlow(ProductSearchUiState())
     val uiState: StateFlow<ProductSearchUiState> = _uiState.asStateFlow()
 
+    private var searchJob: kotlinx.coroutines.Job? = null
+
     fun updateQuery(query: String) {
         _uiState.value = _uiState.value.copy(
             query = query,
-            error = null
+            error = null,
+            isFromVisualSearch = false
         )
     }
 
@@ -48,47 +61,63 @@ class ProductSearchViewModel(application: Application) : AndroidViewModel(applic
             return
         }
 
-        Log.d("SnapShopSearch", "SEARCH: START")
-        Log.d("SnapShopSearch", "SEARCH: QUERY: $q")
+        searchJob?.cancel()
 
         _uiState.value = _uiState.value.copy(
             query = q,
             isLoading = true,
-            error = null
+            loadingMessage = "Finding products...",
+            error = null,
+            isFromVisualSearch = false
         )
 
-        viewModelScope.launch {
+        searchJob = viewModelScope.launch {
             try {
                 val products = repository.searchProducts(q)
-
-                val merchants = products.mapNotNull { it.source }
-                    .filter { it.isNotBlank() }
-                    .distinct()
-
-                val currentState = _uiState.value
-                val filtered = applySortAndFilters(
-                    products = products,
-                    sort = currentState.selectedSort,
-                    minRating = currentState.minRatingFilter,
-                    merchant = currentState.selectedMerchant
-                )
-
-                _uiState.value = _uiState.value.copy(
-                    rawProducts = products,
-                    displayedProducts = filtered,
-                    availableMerchants = merchants,
-                    isLoading = false
-                )
-
-                Log.d("SnapShopSearch", "SEARCH: UI STATE UPDATED (raw = ${products.size}, displayed = ${filtered.size})")
+                publishSearchResults(q, products, isFromVisualSearch = false)
             } catch (e: Exception) {
-                Log.e("SnapShopSearch", "SEARCH ERROR IN VIEWMODEL: ${e.message}", e)
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = e.message ?: "Failed to load shopping results. Please try again."
-                )
+                if (e !is kotlinx.coroutines.CancellationException) {
+                    Log.e("SnapShopSearch", "Search error: ${e.message}", e)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "Couldn't find products right now. Please try again."
+                    )
+                }
             }
         }
+    }
+
+    fun setVisualSearchResults(query: String, products: List<Product>) {
+        publishSearchResults(query, products, isFromVisualSearch = true)
+    }
+
+    private fun publishSearchResults(
+        query: String,
+        products: List<Product>,
+        isFromVisualSearch: Boolean
+    ) {
+        val merchants = products.mapNotNull { it.source }
+            .filter { it.isNotBlank() }
+            .distinct()
+
+        val currentState = _uiState.value
+        val filtered = applySortAndFilters(
+            products = products,
+            sort = currentState.selectedSort,
+            minRating = currentState.minRatingFilter,
+            merchant = currentState.selectedMerchant,
+            priceRange = currentState.priceRangeFilter
+        )
+
+        _uiState.value = currentState.copy(
+            query = query,
+            rawProducts = products,
+            displayedProducts = filtered,
+            availableMerchants = merchants,
+            isLoading = false,
+            isFromVisualSearch = isFromVisualSearch,
+            error = null
+        )
     }
 
     fun setSort(sort: SortOption) {
@@ -97,7 +126,8 @@ class ProductSearchViewModel(application: Application) : AndroidViewModel(applic
             products = currentState.rawProducts,
             sort = sort,
             minRating = currentState.minRatingFilter,
-            merchant = currentState.selectedMerchant
+            merchant = currentState.selectedMerchant,
+            priceRange = currentState.priceRangeFilter
         )
         _uiState.value = currentState.copy(
             selectedSort = sort,
@@ -105,30 +135,19 @@ class ProductSearchViewModel(application: Application) : AndroidViewModel(applic
         )
     }
 
-    fun setMinRating(minRating: Double) {
+    fun applyFilters(filters: AppliedFilters) {
         val currentState = _uiState.value
         val updated = applySortAndFilters(
             products = currentState.rawProducts,
             sort = currentState.selectedSort,
-            minRating = minRating,
-            merchant = currentState.selectedMerchant
+            minRating = filters.minRating,
+            merchant = filters.merchant,
+            priceRange = filters.priceRange
         )
         _uiState.value = currentState.copy(
-            minRatingFilter = minRating,
-            displayedProducts = updated
-        )
-    }
-
-    fun setMerchantFilter(merchant: String?) {
-        val currentState = _uiState.value
-        val updated = applySortAndFilters(
-            products = currentState.rawProducts,
-            sort = currentState.selectedSort,
-            minRating = currentState.minRatingFilter,
-            merchant = merchant
-        )
-        _uiState.value = currentState.copy(
-            selectedMerchant = merchant,
+            minRatingFilter = filters.minRating,
+            selectedMerchant = filters.merchant,
+            priceRangeFilter = filters.priceRange,
             displayedProducts = updated
         )
     }
@@ -139,15 +158,23 @@ class ProductSearchViewModel(application: Application) : AndroidViewModel(applic
             products = currentState.rawProducts,
             sort = SortOption.RECOMMENDED,
             minRating = 0.0,
-            merchant = null
+            merchant = null,
+            priceRange = PriceRangeFilter.ALL
         )
         _uiState.value = currentState.copy(
             selectedSort = SortOption.RECOMMENDED,
             minRatingFilter = 0.0,
             selectedMerchant = null,
+            priceRangeFilter = PriceRangeFilter.ALL,
             displayedProducts = updated
         )
     }
+
+    fun currentAppliedFilters(): AppliedFilters = AppliedFilters(
+        minRating = _uiState.value.minRatingFilter,
+        merchant = _uiState.value.selectedMerchant,
+        priceRange = _uiState.value.priceRangeFilter
+    )
 
     fun toggleWishlist(product: Product) {
         viewModelScope.launch {
@@ -170,7 +197,8 @@ class ProductSearchViewModel(application: Application) : AndroidViewModel(applic
         products: List<Product>,
         sort: SortOption,
         minRating: Double,
-        merchant: String?
+        merchant: String?,
+        priceRange: PriceRangeFilter
     ): List<Product> {
         var result = products
 
@@ -179,12 +207,21 @@ class ProductSearchViewModel(application: Application) : AndroidViewModel(applic
         }
 
         if (merchant != null && merchant.isNotBlank()) {
-            result = result.filter { it.source.equals(merchant, ignoreCase = true) }
+            result = result.filter { it.source?.contains(merchant, ignoreCase = true) == true }
+        }
+
+        if (priceRange != PriceRangeFilter.ALL) {
+            result = result.filter { product ->
+                val price = product.numericPrice
+                price > 0.0 && priceRange.matches(price)
+            }
         }
 
         return when (sort) {
             SortOption.RECOMMENDED -> result
-            SortOption.PRICE_LOW_HIGH -> result.sortedBy { it.numericPrice }
+            SortOption.PRICE_LOW_HIGH -> result.sortedWith(
+                compareBy { if (it.numericPrice <= 0.0) Double.MAX_VALUE else it.numericPrice }
+            )
             SortOption.PRICE_HIGH_LOW -> result.sortedByDescending { it.numericPrice }
             SortOption.RATING -> result.sortedByDescending { it.rating ?: 0.0 }
         }

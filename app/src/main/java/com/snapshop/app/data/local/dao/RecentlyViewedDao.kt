@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface RecentlyViewedDao {
 
-    @Query("SELECT * FROM recently_viewed ORDER BY viewedAt DESC LIMIT 20")
+    @Query("SELECT * FROM recently_viewed ORDER BY viewedAt DESC LIMIT 30")
     fun getRecentlyViewed(): Flow<List<RecentlyViewedEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -21,7 +21,7 @@ interface RecentlyViewedDao {
     suspend fun recordProductView(entity: RecentlyViewedEntity) {
         val updated = entity.copy(viewedAt = System.currentTimeMillis())
         insert(updated)
-        trimToLimit(20)
+        trimToLimit(30)
     }
 
     @Query("DELETE FROM recently_viewed WHERE productId NOT IN (SELECT productId FROM recently_viewed ORDER BY viewedAt DESC LIMIT :limit)")

@@ -10,18 +10,22 @@ import java.util.concurrent.TimeUnit
 private const val GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/"
 
 object GeminiRetrofitClient {
-
     val apiKey: String
         get() = BuildConfig.GEMINI_API_KEY
 
-    private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+    private val loggingInterceptor = HttpLoggingInterceptor { message ->
+        val safeMessage = message.replace(Regex("key=[^&\\s]+"), "key=REDACTED")
+        if (BuildConfig.DEBUG) {
+            android.util.Log.d("SnapShopGeminiHttp", safeMessage)
+        }
+    }.apply {
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
     }
 
     private val okHttpClient = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(18, TimeUnit.SECONDS)
+        .writeTimeout(12, TimeUnit.SECONDS)
         .addInterceptor(loggingInterceptor)
         .build()
 

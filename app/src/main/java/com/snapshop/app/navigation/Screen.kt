@@ -6,7 +6,7 @@ sealed class Screen(val route: String) {
 
     data object SearchResults : Screen("search_results?query={query}") {
         fun createRoute(query: String? = null): String {
-            return if (!query.isNull_or_blank()) {
+            return if (!query.isNullOrBlank()) {
                 "search_results?query=${java.net.URLEncoder.encode(query, "UTF-8")}"
             } else {
                 "search_results"
@@ -22,11 +22,11 @@ sealed class Screen(val route: String) {
 
     data object RecentlyViewed : Screen("recently_viewed")
 
+    data object Settings : Screen("settings")
+
     data object ImageSearch : Screen("image_search?mode={mode}") {
         fun createRoute(mode: String = "CAMERA"): String {
             return "image_search?mode=$mode"
         }
     }
 }
-
-private fun String?.isNull_or_blank(): Boolean = this == null || this.trim().isEmpty()

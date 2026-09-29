@@ -1,35 +1,41 @@
 package com.snapshop.app.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -38,46 +44,62 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.snapshop.app.domain.Product
+import com.snapshop.app.ui.theme.AccentMintDark
+import com.snapshop.app.ui.theme.AmberStar
+import com.snapshop.app.ui.theme.ClayBadge
+import com.snapshop.app.ui.theme.ClayCard
+import com.snapshop.app.ui.theme.RedHeart
+import com.snapshop.app.ui.theme.SoftRed
+import com.snapshop.app.ui.theme.SoftYellow
+import com.snapshop.app.ui.theme.SurfaceLight
+import com.snapshop.app.ui.theme.SurfaceVariantLight
+import com.snapshop.app.ui.theme.TextPrimaryLight
+import com.snapshop.app.ui.theme.TextSecondaryLight
 
+/**
+ * Premium 2-Column Claymorphic Product Card.
+ * Soft elevated surface, prominent product visual, tactile wishlist action,
+ * clean typography with bold price emphasis and minimal clutter.
+ */
 @Composable
 fun ProductCard(
     product: Product,
     onProductClick: (Product) -> Unit,
     onWishlistToggle: (Product) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onViewDealClick: ((Product) -> Unit)? = null
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onProductClick(product) },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ClayCard(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = SurfaceLight,
+        elevation = 5.dp,
+        onClick = { onProductClick(product) }
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(10.dp)
         ) {
-            // Product Image Box with Non-Blocking Placeholder & Error Fallbacks
+            // Product Image Box with Floating Tactile Wishlist Button
             Box(
                 modifier = Modifier
-                    .size(96.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .fillMaxWidth()
+                    .aspectRatio(1.05f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SurfaceVariantLight),
                 contentAlignment = Alignment.Center
             ) {
                 val fallbackPainter = rememberVectorPainter(Icons.Default.ShoppingBag)
                 val imageUrl = product.imageUrl?.trim()
 
-                if (!imageUrl.isNull_or_blank()) {
+                if (!imageUrl.isNullOrBlank()) {
                     AsyncImage(
                         model = imageUrl,
                         contentDescription = product.title,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(8.dp),
                         contentScale = ContentScale.Fit,
                         placeholder = fallbackPainter,
                         error = fallbackPainter
@@ -86,105 +108,161 @@ fun ProductCard(
                     Icon(
                         imageVector = Icons.Default.ShoppingBag,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.size(36.dp)
+                        tint = TextSecondaryLight.copy(alpha = 0.4f),
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
+
+                // Tactile Wishlist Floating Button
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                ) {
+                    WishlistHeartButton(
+                        isWishlisted = product.isWishlisted,
+                        onClick = { onWishlistToggle(product) }
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Details Column
-            Column(
-                modifier = Modifier.weight(1f)
+            // Store Name & Rating Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Source / Merchant badge
-                product.source?.takeIf { it.isNotBlank() }?.let { source ->
-                    Text(
+                val source = product.source?.trim()
+                if (!source.isNullOrBlank()) {
+                    ClayBadge(
                         text = source.uppercase(),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        backgroundColor = SurfaceVariantLight,
+                        textColor = TextSecondaryLight
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp))
                 }
 
-                // Title
-                Text(
-                    text = product.title ?: "Product",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 15.sp,
-                        lineHeight = 20.sp
-                    ),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // Price and Rating Row
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    product.price?.takeIf { it.isNotBlank() }?.let { price ->
+                if (product.rating != null && product.rating > 0.0) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(SoftYellow)
+                            .padding(horizontal = 5.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = null,
+                            tint = AmberStar,
+                            modifier = Modifier.size(11.dp)
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
                         Text(
-                            text = price,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            ),
-                            color = MaterialTheme.colorScheme.tertiary
+                            text = String.format("%.1f", product.rating),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimaryLight
                         )
                     }
-
-                    product.rating?.let { rating ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                tint = Color(0xFFFFB800),
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text(
-                                text = "$rating",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            product.reviewsCount?.let { count ->
-                                Text(
-                                    text = " ($count)",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
                 }
             }
 
-            // Wishlist Heart Button
-            IconButton(
-                onClick = { onWishlistToggle(product) },
-                modifier = Modifier.align(Alignment.Top)
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Product Title
+            Text(
+                text = product.title ?: "Product",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimaryLight,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 17.sp,
+                modifier = Modifier.height(34.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Price Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (product.isWishlisted) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = "Save to Wishlist",
-                    tint = if (product.isWishlisted) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                val priceText = product.price?.trim()
+                if (!priceText.isNullOrBlank()) {
+                    Text(
+                        text = priceText,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = AccentMintDark
+                    )
+                } else {
+                    Text(
+                        text = "Check Deal",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextSecondaryLight
+                    )
+                }
+
+                if (product.reviewsCount != null && product.reviewsCount > 0) {
+                    Text(
+                        text = "(${product.reviewsCount})",
+                        fontSize = 11.sp,
+                        color = TextSecondaryLight
+                    )
+                }
             }
         }
     }
 }
 
-private fun String?.isNull_or_blank(): Boolean = this == null || this.trim().isEmpty()
+/**
+ * Tactile bouncing Heart button for wishlist saving.
+ */
+@Composable
+fun WishlistHeartButton(
+    isWishlisted: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    size: Int = 32
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.85f else if (isWishlisted) 1.05f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "heartScale"
+    )
+
+    val iconColor by animateColorAsState(
+        targetValue = if (isWishlisted) RedHeart else TextSecondaryLight,
+        label = "heartColor"
+    )
+
+    Box(
+        modifier = modifier
+            .size(size.dp)
+            .scale(scale)
+            .clip(CircleShape)
+            .background(if (isWishlisted) SoftRed else SurfaceLight.copy(alpha = 0.92f))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = if (isWishlisted) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+            contentDescription = if (isWishlisted) "Remove from wishlist" else "Add to wishlist",
+            tint = iconColor,
+            modifier = Modifier.size((size * 0.55).dp)
+        )
+    }
+}

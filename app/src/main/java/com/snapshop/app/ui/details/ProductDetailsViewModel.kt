@@ -24,13 +24,17 @@ class ProductDetailsViewModel(application: Application) : AndroidViewModel(appli
     private val _uiState = MutableStateFlow(ProductDetailsUiState())
     val uiState: StateFlow<ProductDetailsUiState> = _uiState.asStateFlow()
 
+    private var productJob: kotlinx.coroutines.Job? = null
+    private var relatedJob: kotlinx.coroutines.Job? = null
+
     fun setProduct(product: Product) {
         _uiState.value = _uiState.value.copy(
             product = product,
             isWishlisted = product.isWishlisted
         )
 
-        viewModelScope.launch {
+        productJob?.cancel()
+        productJob = viewModelScope.launch {
             repository.recordProductView(product)
 
             repository.isWishlisted(product.safeId()).collect { isSaved ->
@@ -51,7 +55,8 @@ class ProductDetailsViewModel(application: Application) : AndroidViewModel(appli
 
     private fun loadRelatedProducts(product: Product) {
         val query = product.title?.split(" ")?.take(3)?.joinToString(" ") ?: return
-        viewModelScope.launch {
+        relatedJob?.cancel()
+        relatedJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingRelated = true)
             try {
                 val results = repository.searchProducts(query, saveToHistory = false)
@@ -60,7 +65,7 @@ class ProductDetailsViewModel(application: Application) : AndroidViewModel(appli
                     relatedProducts = filtered,
                     isLoadingRelated = false
                 )
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(isLoadingRelated = false)
             }
         }

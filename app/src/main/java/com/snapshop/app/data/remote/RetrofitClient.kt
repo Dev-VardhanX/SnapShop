@@ -11,37 +11,33 @@ import retrofit2.converter.gson.GsonConverterFactory
 private const val SERP_API_BASE_URL = "https://serpapi.com/"
 
 object RetrofitClient {
-
     val apiKey: String
         get() = BuildConfig.SERPAPI_KEY
 
     private val loggingInterceptor = HttpLoggingInterceptor { message ->
-        Log.d("SnapShopHttp", message)
+        val safeMessage = message.replace(Regex("api_key=[^&\\s]+"), "api_key=REDACTED")
+        if (BuildConfig.DEBUG) {
+            Log.d("SnapShopHttp", safeMessage)
+        }
     }.apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BASIC else HttpLoggingInterceptor.Level.NONE
     }
 
     private val apiKeyInterceptor = Interceptor { chain ->
         val originalRequest = chain.request()
-
         val newUrl = originalRequest.url.newBuilder()
             .addQueryParameter("api_key", apiKey)
             .build()
-
-        val redactedUrl = newUrl.toString().replace(Regex("api_key=[^&]+"), "api_key=REDACTED")
-        Log.d("SnapShopSearch", "SEARCH: API REQUEST: $redactedUrl")
-
         val newRequest = originalRequest.newBuilder()
             .url(newUrl)
             .build()
-
-        val response = chain.proceed(newRequest)
-        Log.d("SnapShopSearch", "SEARCH: API RESPONSE RECEIVED")
-        Log.d("SnapShopSearch", "SEARCH: HTTP STATUS: ${response.code}")
-        response
+        chain.proceed(newRequest)
     }
 
     private val okHttpClient = OkHttpClient.Builder()
+        .connectTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .addInterceptor(apiKeyInterceptor)
         .addInterceptor(loggingInterceptor)
         .build()

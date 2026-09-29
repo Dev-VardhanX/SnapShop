@@ -119,4 +119,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
 
     implementation(libs.androidx.compose.material.icons.extended)
+
+    // ML Kit Image Labeling (On-Device Vision Fallback)
+    implementation("com.google.mlkit:image-labeling:17.0.9")
 }

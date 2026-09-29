@@ -23,6 +23,9 @@ interface SearchHistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(entity: SearchHistoryEntity)
 
+    @Query("DELETE FROM search_history WHERE id NOT IN (SELECT id FROM search_history ORDER BY timestamp DESC LIMIT :limit)")
+    suspend fun trimToLimit(limit: Int)
+
     @Transaction
     suspend fun recordSearch(query: String, searchType: String = "TEXT", imageUri: String? = null, category: String? = null, brand: String? = null) {
         deleteByQuery(query)
@@ -36,6 +39,7 @@ interface SearchHistoryDao {
                 recognizedBrand = brand
             )
         )
+        trimToLimit(50)
     }
 
     @Query("DELETE FROM search_history WHERE id = :id")

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,29 +17,35 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Watch
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,72 +55,107 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.snapshop.app.data.local.entity.SearchHistoryEntity
 import com.snapshop.app.data.repository.ProductRepository
+import com.snapshop.app.domain.Product
+import com.snapshop.app.ui.theme.AccentMintDark
+import com.snapshop.app.ui.theme.BackgroundLight
+import com.snapshop.app.ui.theme.ClayButton
+import com.snapshop.app.ui.theme.ClayButtonVariant
+import com.snapshop.app.ui.theme.ClayCard
+import com.snapshop.app.ui.theme.ClayChip
+import com.snapshop.app.ui.theme.ClayIconButton
+import com.snapshop.app.ui.theme.PrimaryIndigo
+import com.snapshop.app.ui.theme.PrimaryIndigoContainer
+import com.snapshop.app.ui.theme.RedHeart
+import com.snapshop.app.ui.theme.SnapShopTheme
+import com.snapshop.app.ui.theme.SoftRed
+import com.snapshop.app.ui.theme.SurfaceLight
+import com.snapshop.app.ui.theme.SurfaceVariantLight
+import com.snapshop.app.ui.theme.TextPrimaryLight
+import com.snapshop.app.ui.theme.TextSecondaryLight
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+data class CategoryItem(
+    val title: String,
+    val icon: ImageVector,
+    val color: Color
+)
+
 @Composable
 fun HomeScreen(
     onSearchQuerySubmit: (String) -> Unit,
     onCameraClick: () -> Unit,
     onGalleryClick: () -> Unit,
-    onHistoryItemClick: (String) -> Unit
+    onHistoryItemClick: (String) -> Unit,
+    onWishlistClick: (() -> Unit)? = null,
+    onRecentlyViewedClick: (() -> Unit)? = null,
+    onSettingsClick: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val repository = remember { ProductRepository(context) }
     val recentSearches by repository.getRecentSearches().collectAsState(initial = emptyList())
+    val wishlistProducts by repository.getWishlistProducts().collectAsState(initial = emptyList())
+    val recentlyViewedProducts by repository.getRecentlyViewedProducts().collectAsState(initial = emptyList())
+
+    HomeScreenContent(
+        recentSearches = recentSearches,
+        wishlistProducts = wishlistProducts,
+        recentlyViewedProducts = recentlyViewedProducts,
+        onSearchQuerySubmit = onSearchQuerySubmit,
+        onCameraClick = onCameraClick,
+        onGalleryClick = onGalleryClick,
+        onHistoryItemClick = onHistoryItemClick,
+        onWishlistClick = onWishlistClick,
+        onRecentlyViewedClick = onRecentlyViewedClick,
+        onSettingsClick = onSettingsClick
+    )
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun HomeScreenContent(
+    recentSearches: List<SearchHistoryEntity>,
+    wishlistProducts: List<Product>,
+    recentlyViewedProducts: List<Product>,
+    onSearchQuerySubmit: (String) -> Unit,
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit,
+    onHistoryItemClick: (String) -> Unit,
+    onWishlistClick: (() -> Unit)? = null,
+    onRecentlyViewedClick: (() -> Unit)? = null,
+    onSettingsClick: (() -> Unit)? = null
+) {
+
     var searchText by remember { mutableStateOf("") }
 
     val categories = listOf(
-        "Smartphones", "Wireless Earbuds", "Sneakers", "Smartwatches", "Laptops", "Fashion", "Gaming Accessories"
+        CategoryItem("Electronics", Icons.Default.Devices, Color(0xFFE0E7FF)),
+        CategoryItem("Fashion", Icons.Default.ShoppingBag, Color(0xFFFFEDD5)),
+        CategoryItem("Shoes & Watches", Icons.Default.Watch, Color(0xFFD1FAE5)),
+        CategoryItem("Beauty", Icons.Default.Spa, Color(0xFFFCE7F3)),
+        CategoryItem("Home", Icons.Default.Home, Color(0xFFE0F2FE)),
+        CategoryItem("Fitness", Icons.Default.FitnessCenter, Color(0xFFFEF3C7)),
+        CategoryItem("Gaming", Icons.Default.SportsEsports, Color(0xFFEDE9FE))
     )
 
     Scaffold(
+        containerColor = BackgroundLight,
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.primary),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingBag,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        Column {
-                            Text(
-                                text = "SnapShop",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 19.sp,
-                                color = MaterialTheme.colorScheme.onBackground
-                            )
-                            Text(
-                                text = "AI Shopping Search",
-                                fontSize = 11.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+            HomeTopBar(
+                wishlistCount = wishlistProducts.size,
+                onWishlistClick = onWishlistClick,
+                onSettingsClick = onSettingsClick
             )
         }
     ) { paddingValues ->
@@ -121,229 +163,670 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(22.dp)
         ) {
+            // Hero Greeting Headline
             item {
                 Spacer(modifier = Modifier.height(4.dp))
-                // Hero Banner
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.linearGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.primary,
-                                            MaterialTheme.colorScheme.tertiary
-                                        )
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
+                HomeHeroSection()
+            }
+
+            // Clay Molded Search Bar
+            item {
+                ClaySearchBar(
+                    query = searchText,
+                    onQueryChange = { searchText = it },
+                    onSearch = {
+                        if (searchText.isNotBlank()) {
+                            onSearchQuerySubmit(searchText.trim())
+                        }
+                    },
+                    onCameraShortcut = onCameraClick
+                )
+            }
+
+            // Signature Visual Search Clay Showcase Card
+            item {
+                VisualSearchClayCard(
+                    onCameraClick = onCameraClick,
+                    onGalleryClick = onGalleryClick
+                )
+            }
+
+            // Recent Searches Chips
+            if (recentSearches.isNotEmpty()) {
+                item {
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 12.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.AutoAwesome,
+                                imageVector = Icons.Default.History,
                                 contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(36.dp)
+                                tint = PrimaryIndigo,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Recent Searches",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                color = TextPrimaryLight
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Text(
-                            text = "Find anything. Shop smarter.",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Text(
-                            text = "Search by text or snap a photo of any item around you. AI finds live prices across top stores.",
-                            fontSize = 13.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 18.sp,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                    }
-                }
-            }
-
-            // Search Bar Input
-            item {
-                OutlinedTextField(
-                    value = searchText,
-                    onValueChange = { searchText = it },
-                    placeholder = { Text("Search products, brands, models...", fontSize = 14.sp) },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    trailingIcon = {
-                        if (searchText.isNotBlank()) {
-                            IconButton(onClick = { onSearchQuerySubmit(searchText) }) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search",
-                                    tint = MaterialTheme.colorScheme.primary
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            recentSearches.take(6).forEach { entity ->
+                                ClayChip(
+                                    text = entity.query,
+                                    selected = false,
+                                    onClick = { onHistoryItemClick(entity.query) }
                                 )
                             }
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    singleLine = true,
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        imeAction = androidx.compose.ui.text.input.ImeAction.Search
-                    ),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                        onSearch = {
-                            if (searchText.isNotBlank()) {
-                                onSearchQuerySubmit(searchText)
+                    }
+                }
+            }
+
+            // Recently Viewed Horizontal Carousel
+            if (recentlyViewedProducts.isNotEmpty()) {
+                item {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.TrendingUp,
+                                    contentDescription = null,
+                                    tint = PrimaryIndigo,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Recently Viewed",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = TextPrimaryLight
+                                )
+                            }
+
+                            if (onRecentlyViewedClick != null) {
+                                Text(
+                                    text = "See All",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PrimaryIndigo,
+                                    modifier = Modifier.clickable { onRecentlyViewedClick() }
+                                )
                             }
                         }
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                    )
-                )
-            }
 
-            // Visual AI Search Options Card
-            item {
-                Text(
-                    text = "AI Visual Search",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = onCameraClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(54.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Scan Camera", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-
-                    OutlinedButton(
-                        onClick = onGalleryClick,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(54.dp),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.PhotoLibrary, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Upload Photo", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            items(
+                                items = recentlyViewedProducts.take(8),
+                                key = { it.safeId() }
+                            ) { product ->
+                                MiniatureProductCard(
+                                    product = product,
+                                    onClick = { onSearchQuerySubmit(product.title ?: "") }
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            // Recent Searches (if available)
-            if (recentSearches.isNotEmpty()) {
-                item {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.History,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Recent Searches",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
+            // Explore Categories Section
+            item {
+                Column {
+                    Text(
+                        text = "Explore Categories",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = TextPrimaryLight,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
 
                     FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        recentSearches.take(6).forEach { entity ->
-                            SuggestionChip(
-                                onClick = { onHistoryItemClick(entity.query) },
-                                label = { Text(entity.query, fontSize = 13.sp) }
-                            )
+                        categories.forEach { category ->
+                            ClayCard(
+                                shape = RoundedCornerShape(16.dp),
+                                color = SurfaceLight,
+                                elevation = 4.dp,
+                                onClick = { onSearchQuerySubmit(category.title) }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(30.dp)
+                                            .clip(CircleShape)
+                                            .background(category.color),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = category.icon,
+                                            contentDescription = null,
+                                            tint = PrimaryIndigo,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Text(
+                                        text = category.title,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TextPrimaryLight
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            // Discover Categories
             item {
-                Text(
-                    text = "Discover Categories",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    categories.forEach { category ->
-                        Card(
-                            modifier = Modifier.clickable { onSearchQuerySubmit(category) },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Text(
-                                text = category,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
 }
 
+/**
+ * Top App Bar with SnapShop 3D logo emblem, Wishlist quick counter, and Settings button.
+ */
 @Composable
-private fun IconButton(onClick: () -> Unit, content: @Composable () -> Unit) {
-    Box(modifier = Modifier.clickable { onClick() }.padding(8.dp)) {
-        content()
+private fun HomeTopBar(
+    wishlistCount: Int,
+    onWishlistClick: (() -> Unit)?,
+    onSettingsClick: (() -> Unit)?
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // SnapShop 3D Logo Badge
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ClayCard(
+                modifier = Modifier.size(44.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = PrimaryIndigo,
+                elevation = 5.dp
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ShoppingBag,
+                        contentDescription = "SnapShop",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column {
+                Text(
+                    text = "SnapShop",
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp,
+                    color = TextPrimaryLight,
+                    letterSpacing = (-0.3).sp
+                )
+                Text(
+                    text = "Smart Price Discovery",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = PrimaryIndigo
+                )
+            }
+        }
+
+        // Actions: Wishlist Quick Pill & Settings
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (onWishlistClick != null) {
+                ClayCard(
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (wishlistCount > 0) SoftRed else SurfaceLight,
+                    elevation = 4.dp,
+                    onClick = onWishlistClick
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = "Wishlist",
+                            tint = RedHeart,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        if (wishlistCount > 0) {
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = "$wishlistCount",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = RedHeart
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (onSettingsClick != null) {
+                ClayIconButton(
+                    onClick = onSettingsClick,
+                    icon = Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    size = 40.dp,
+                    iconSize = 18.dp
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Large Friendly Hero Section: "Find anything. Shop smarter."
+ */
+@Composable
+private fun HomeHeroSection() {
+    ClayCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        color = SurfaceLight,
+        elevation = 6.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(PrimaryIndigoContainer)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = PrimaryIndigo,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "AI PRICE RADAR",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = PrimaryIndigo,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "Find anything.\nShop smarter.",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = TextPrimaryLight,
+                    lineHeight = 28.sp
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = "Compare live prices across top stores instantly with text or camera.",
+                    fontSize = 12.sp,
+                    color = TextSecondaryLight,
+                    lineHeight = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // 3D Molded Floating Emblem
+            ClayCard(
+                modifier = Modifier.size(68.dp),
+                shape = CircleShape,
+                color = PrimaryIndigoContainer,
+                elevation = 4.dp
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = null,
+                        tint = PrimaryIndigo,
+                        modifier = Modifier.size(34.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Large Clay Molded Search Bar.
+ */
+@Composable
+private fun ClaySearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit,
+    onCameraShortcut: () -> Unit
+) {
+    ClayCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        color = SurfaceLight,
+        elevation = 6.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = PrimaryIndigo,
+                modifier = Modifier.size(22.dp)
+            )
+
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.weight(1f),
+                placeholder = {
+                    Text(
+                        text = "Search products, brands, models...",
+                        fontSize = 14.sp,
+                        color = TextSecondaryLight.copy(alpha = 0.8f)
+                    )
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    disabledContainerColor = Color.Transparent,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent
+                )
+            )
+
+            if (query.isNotBlank()) {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(
+                        imageVector = Icons.Default.Clear,
+                        contentDescription = "Clear",
+                        tint = TextSecondaryLight,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+
+            // Camera shortcut in search bar
+            ClayIconButton(
+                onClick = onCameraShortcut,
+                icon = Icons.Default.CameraAlt,
+                contentDescription = "Visual Search",
+                size = 38.dp,
+                iconSize = 18.dp,
+                containerColor = PrimaryIndigoContainer,
+                contentColor = PrimaryIndigo
+            )
+        }
+    }
+}
+
+/**
+ * Signature Visual Search Clay Showcase Card.
+ * Makes photo search feel like a signature SnapShop feature.
+ */
+@Composable
+private fun VisualSearchClayCard(
+    onCameraClick: () -> Unit,
+    onGalleryClick: () -> Unit
+) {
+    ClayCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        color = SurfaceLight,
+        elevation = 7.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ClayCard(
+                    modifier = Modifier.size(46.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = PrimaryIndigoContainer,
+                    elevation = 3.dp
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            tint = PrimaryIndigo,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(14.dp))
+
+                Column {
+                    Text(
+                        text = "Search with an Image",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        color = TextPrimaryLight
+                    )
+                    Text(
+                        text = "Snap a real item to find exact store listings",
+                        fontSize = 12.sp,
+                        color = TextSecondaryLight
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Two Prominent Tactile Clay Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ClayButton(
+                    onClick = onCameraClick,
+                    text = "Take Photo",
+                    icon = Icons.Default.CameraAlt,
+                    variant = ClayButtonVariant.Primary,
+                    modifier = Modifier.weight(1f)
+                )
+
+                ClayButton(
+                    onClick = onGalleryClick,
+                    text = "From Gallery",
+                    icon = Icons.Default.PhotoLibrary,
+                    variant = ClayButtonVariant.Secondary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Miniature Product Card for the Recently Viewed carousel.
+ */
+@Composable
+private fun MiniatureProductCard(
+    product: Product,
+    onClick: () -> Unit
+) {
+    ClayCard(
+        modifier = Modifier.width(148.dp),
+        shape = RoundedCornerShape(18.dp),
+        color = SurfaceLight,
+        elevation = 4.dp,
+        onClick = onClick
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SurfaceVariantLight),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!product.imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = product.imageUrl,
+                        contentDescription = product.title,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(6.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.ShoppingBag,
+                        contentDescription = null,
+                        tint = TextSecondaryLight.copy(alpha = 0.4f),
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = product.title ?: "Product",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimaryLight,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            product.price?.let { price ->
+                Text(
+                    text = price,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AccentMintDark
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun HomeScreenPreview() {
+    SnapShopTheme {
+        HomeScreenContent(
+            recentSearches = listOf(
+                SearchHistoryEntity(query = "Wireless Headphones"),
+                SearchHistoryEntity(query = "Smart Watch"),
+                SearchHistoryEntity(query = "Running Shoes")
+            ),
+            wishlistProducts = listOf(
+                Product(
+                    id = "1",
+                    title = "Wireless Headphones",
+                    price = "$99.99",
+                    source = "Store",
+                    imageUrl = null,
+                    buyUrl = null,
+                    rating = 4.5,
+                    reviewsCount = 100
+                )
+            ),
+            recentlyViewedProducts = listOf(
+                Product(
+                    id = "1",
+                    title = "Wireless Headphones",
+                    price = "$99.99",
+                    source = "Store",
+                    imageUrl = null,
+                    buyUrl = null,
+                    rating = 4.5,
+                    reviewsCount = 100
+                ),
+                Product(
+                    id = "2",
+                    title = "Smart Watch",
+                    price = "$199.99",
+                    source = "Store",
+                    imageUrl = null,
+                    buyUrl = null,
+                    rating = 4.8,
+                    reviewsCount = 250
+                )
+            ),
+            onSearchQuerySubmit = {},
+            onCameraClick = {},
+            onGalleryClick = {},
+            onHistoryItemClick = {},
+            onWishlistClick = {},
+            onRecentlyViewedClick = {},
+            onSettingsClick = {}
+        )
     }
 }
