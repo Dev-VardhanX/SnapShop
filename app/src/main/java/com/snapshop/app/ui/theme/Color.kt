@@ -35,7 +35,7 @@ val SoftRed = Color(0xFFFEE2E2)
 val RedHeart = Color(0xFFEF4444)
 
 // Light Clay Surfaces
-val BackgroundLight = Color(0xFFF6F7FB)
+val BackgroundLight = Color(0xFFECEEF9)
 val SurfaceLight = Color(0xFFFFFFFF)
 val SurfaceVariantLight = Color(0xFFF0F3FA)
 val SurfaceMoldedLight = Color(0xFFF9FAFD)
@@ -50,6 +50,10 @@ val ClayHighlightLight = Color(0xCCFFFFFF)
 val ClayShadowLight = Color(0x18202A4A)
 val ClayKeyShadowLight = Color(0x2218203E)
 val ClayAmbientShadowLight = Color(0x0E3B4268)
+
+// Real clay depth: soft tinted drop shadow + base tone used for inner shading
+val ClayDropShadow = Color(0x407B83C4)
+val ClayShadeBase = Color(0xFF3B3F80)
 
 // Dark Palette
 val PrimaryIndigoDark = Color(0xFF818CF8)

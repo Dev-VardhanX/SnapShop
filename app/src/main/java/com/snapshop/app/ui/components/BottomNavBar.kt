@@ -2,10 +2,8 @@ package com.snapshop.app.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -31,24 +29,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snapshop.app.navigation.Screen
-import com.snapshop.app.ui.theme.ClayAmbientShadowLight
-import com.snapshop.app.ui.theme.ClayKeyShadowLight
 import com.snapshop.app.ui.theme.PrimaryIndigo
 import com.snapshop.app.ui.theme.PrimaryIndigoContainer
 import com.snapshop.app.ui.theme.SurfaceLight
 import com.snapshop.app.ui.theme.TextSecondaryLight
+import com.snapshop.app.ui.theme.clayDepth
 
 sealed class BottomNavItem(
     val route: String,
@@ -62,8 +54,9 @@ sealed class BottomNavItem(
 }
 
 /**
- * Custom Floating Claymorphic Navigation Bar.
- * Molded clay pill with elevated active indicator, tactile bounce, and soft depth.
+ * Floating clay navigation bar.
+ * The outer Box is transparent, so the app background shows around/below the pill
+ * (no black band) as long as the system nav bar is transparent (see AppNavigation).
  */
 @Composable
 fun BottomNavBar(
@@ -76,43 +69,20 @@ fun BottomNavBar(
         BottomNavItem.Wishlist,
         BottomNavItem.History
     )
+    val barShape = RoundedCornerShape(32.dp)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 10.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 14.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Floating Clay Bar Pill
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(
-                    elevation = 10.dp,
-                    shape = RoundedCornerShape(28.dp),
-                    ambientColor = ClayAmbientShadowLight,
-                    spotColor = ClayKeyShadowLight
-                )
-                .clip(RoundedCornerShape(28.dp))
-                .background(SurfaceLight)
-                .drawWithContent {
-                    drawContent()
-                    // Top specular highlight edge
-                    drawRoundRect(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.95f),
-                                Color.White.copy(alpha = 0.2f),
-                                Color.Transparent
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(size.width, size.height)
-                        ),
-                        size = size,
-                        style = Stroke(width = 1.2.dp.toPx())
-                    )
-                }
+                .clayDepth(shape = barShape, color = SurfaceLight, elevation = 7.dp)
+                .clip(barShape)
                 .padding(horizontal = 8.dp, vertical = 8.dp)
         ) {
             Row(
@@ -121,14 +91,11 @@ fun BottomNavBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 items.forEach { item ->
-                    val isSelected = currentRoute == item.route
                     ClayNavItem(
                         item = item,
-                        isSelected = isSelected,
+                        isSelected = currentRoute == item.route,
                         onClick = {
-                            if (currentRoute != item.route) {
-                                onNavigate(item.route)
-                            }
+                            if (currentRoute != item.route) onNavigate(item.route)
                         }
                     )
                 }
@@ -145,42 +112,43 @@ private fun ClayNavItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val itemShape = RoundedCornerShape(22.dp)
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else if (isSelected) 1.02f else 1f,
+        targetValue = if (isPressed) 0.93f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "navScale"
     )
-
     val iconColor by animateColorAsState(
         targetValue = if (isSelected) PrimaryIndigo else TextSecondaryLight,
         label = "navIconColor"
     )
 
-    val itemElevation by animateDpAsState(
-        targetValue = if (isSelected) 2.dp else 0.dp,
-        label = "navElevation"
-    )
-
     Box(
         modifier = Modifier
             .scale(scale)
-            .shadow(
-                elevation = itemElevation,
-                shape = RoundedCornerShape(20.dp),
-                ambientColor = PrimaryIndigo.copy(alpha = 0.2f),
-                spotColor = PrimaryIndigo.copy(alpha = 0.3f)
-            )
-            .clip(RoundedCornerShape(20.dp))
-            .background(
-                if (isSelected) PrimaryIndigoContainer else Color.Transparent
+            .then(
+                if (isSelected) {
+                    // selected tab = pressed-in clay dent
+                    Modifier
+                        .clayDepth(
+                            shape = itemShape,
+                            color = PrimaryIndigoContainer,
+                            elevation = 4.dp,
+                            inset = true,
+                            dropShadow = PrimaryIndigo.copy(alpha = 0.25f)
+                        )
+                        .clip(itemShape)
+                } else {
+                    Modifier.clip(itemShape)
+                }
             )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -191,7 +159,7 @@ private fun ClayNavItem(
                 imageVector = item.icon,
                 contentDescription = item.title,
                 tint = iconColor,
-                modifier = Modifier.size(20.dp)
+                modifier = Modifier.size(21.dp)
             )
             if (isSelected) {
                 Spacer(modifier = Modifier.size(6.dp))

@@ -1,14 +1,14 @@
 package com.snapshop.app.ui.theme
 
+import android.os.Build
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -37,102 +37,192 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.min
 
-/**
- * Custom Claymorphism modifier that adds:
- * 1. Soft dual-layer shadow depth
- * 2. Subtle directional 3D light gradient (soft molded clay volume)
- * 3. Soft specular inner highlight stroke along top-left
- * 4. Smooth physical compression when pressed
- */
+// =====================================================================
+//  CLAY ENGINE
+//  Real claymorphism = 4 layers:
+//   1. soft dark drop shadow  (bottom-right, tinted, large blur)
+//   2. soft white light shadow (top-left, large blur)  -> "puffy" look
+//   3. gradient body (light top-left -> slightly shaded bottom-right)
+//   4. inner highlight (top-left) + inner shade (bottom-right)
+//  `inset = true` flips it into a pressed-in clay dent (search fields, selected chips).
+//  Needs API 28+ for blurred shadow layers; below that it falls back to a plain elevation shadow.
+// =====================================================================
+
+private fun Outline.toClayPath(): Path = when (this) {
+    is Outline.Rectangle -> Path().apply { addRect(rect) }
+    is Outline.Rounded -> Path().apply { addRoundRect(roundRect) }
+    is Outline.Generic -> path
+}
+
+private fun clayPaint(argb: Int) =
+    android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { this.color = argb }
+
+fun Modifier.clayDepth(
+    shape: Shape,
+    color: Color,
+    elevation: Dp = 6.dp,
+    pressed: Float = 0f,
+    inset: Boolean = false,
+    dropShadow: Color = ClayDropShadow,
+    highlight: Color = Color.White.copy(alpha = 0.9f),
+    shade: Color = lerp(color, ClayShadeBase, 0.45f)
+): Modifier = this
+    .then(
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P && !inset) {
+            Modifier.shadow(elevation, shape, ambientColor = dropShadow, spotColor = dropShadow)
+        } else {
+            Modifier
+        }
+    )
+    .drawWithCache {
+        val outline = shape.createOutline(size, layoutDirection, this)
+        val path = outline.toClayPath()
+        val nativePath = path.asAndroidPath()
+
+        // ring = big rect minus the shape. Its shadow falls INSIDE the shape = inner shadow.
+        val pad = 400f
+        val ring = Path().apply {
+            fillType = PathFillType.EvenOdd
+            addRect(Rect(-pad, -pad, size.width + pad, size.height + pad))
+            addPath(path)
+        }
+        val nativeRing = ring.asAndroidPath()
+
+        val e = elevation.toPx()
+        val ie = min(e, 8.dp.toPx()).coerceAtLeast(2.dp.toPx())
+        val hasBlur = Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+        val outer = if (inset) 0f else 1f - 0.6f * pressed
+        val sunk = if (inset) 1f else pressed * 0.5f
+
+        val opaque = color.copy(alpha = 1f).toArgb()
+        val darkPaint = clayPaint(opaque)
+        val lightPaint = clayPaint(opaque)
+        val innerLight = clayPaint(opaque)
+        val innerDark = clayPaint(opaque)
+
+        val top = if (inset) lerp(color, shade, 0.07f) else lerp(color, Color.White, 0.2f)
+        val bottom = if (inset) color else lerp(color, shade, 0.05f)
+        val body = Brush.linearGradient(
+            colors = listOf(top, bottom),
+            start = Offset.Zero,
+            end = Offset(size.width, size.height)
+        )
+
+        onDrawBehind {
+            if (hasBlur && outer > 0f && e > 0f) {
+                drawIntoCanvas { canvas ->
+                    val nc = canvas.nativeCanvas
+                    darkPaint.setShadowLayer(
+                        e * 1.5f, e * 0.45f, e * 0.75f,
+                        dropShadow.copy(alpha = dropShadow.alpha * outer).toArgb()
+                    )
+                    nc.drawPath(nativePath, darkPaint)
+                    lightPaint.setShadowLayer(
+                        e * 1.1f, -e * 0.45f, -e * 0.45f,
+                        Color.White.copy(alpha = 0.8f * outer).toArgb()
+                    )
+                    nc.drawPath(nativePath, lightPaint)
+                }
+            }
+
+            drawPath(path, brush = body)
+
+            if (hasBlur) {
+                clipPath(path) {
+                    drawIntoCanvas { canvas ->
+                        val nc = canvas.nativeCanvas
+                        val dir = if (inset) -1f else 1f
+                        val blur = ie * (0.6f + 0.6f * sunk)
+                        val off = ie * 0.4f * (1f + sunk * 0.5f)
+                        innerLight.setShadowLayer(blur, dir * off, dir * off, highlight.toArgb())
+                        nc.drawPath(nativeRing, innerLight)
+                        val darkAlpha = if (inset) 0.3f else 0.12f + 0.15f * sunk
+                        innerDark.setShadowLayer(
+                            blur, -dir * off, -dir * off,
+                            shade.copy(alpha = darkAlpha).toArgb()
+                        )
+                        nc.drawPath(nativeRing, innerDark)
+                    }
+                }
+            }
+        }
+    }
+
+/** Backwards-compatible wrapper so existing `claySurface` callers keep working. */
 fun Modifier.claySurface(
     shape: Shape = RoundedCornerShape(22.dp),
     color: Color = SurfaceLight,
     elevation: Dp = 6.dp,
     pressedElevation: Dp = 2.dp,
-    highlightColor: Color = Color.White.copy(alpha = 0.85f),
-    shadowColor: Color = ClayShadowLight,
+    highlightColor: Color = Color.White.copy(alpha = 0.9f),
+    shadowColor: Color = ClayDropShadow,
     isPressed: Boolean = false,
     highlightStrokeWidth: Dp = 1.2.dp
 ): Modifier = this
-    .shadow(
-        elevation = if (isPressed) pressedElevation else elevation,
+    .clayDepth(
         shape = shape,
-        ambientColor = shadowColor,
-        spotColor = shadowColor
+        color = color,
+        elevation = elevation,
+        pressed = if (isPressed) 1f else 0f,
+        dropShadow = shadowColor,
+        highlight = highlightColor
     )
     .clip(shape)
-    .background(
-        brush = Brush.linearGradient(
-            colors = listOf(
-                color,
-                color.copy(alpha = 0.96f)
-            ),
-            start = Offset(0f, 0f),
-            end = Offset(400f, 600f)
-        )
-    )
-    .drawWithContent {
-        drawContent()
-        // Specular highlight on top-left edge
-        val strokePx = highlightStrokeWidth.toPx()
-        drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = listOf(
-                    highlightColor,
-                    highlightColor.copy(alpha = 0.15f),
-                    Color.Transparent
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(size.width * 0.7f, size.height * 0.7f)
-            ),
-            size = size,
-            style = Stroke(width = strokePx)
-        )
-    }
 
 /**
- * Interactive Clay Card with tactile press feedback and smooth 3D molded elevation.
+ * Interactive Clay Card. `inset = true` makes a pressed-in dent (great for search fields).
  */
 @Composable
 fun ClayCard(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(22.dp),
+    shape: Shape = RoundedCornerShape(24.dp),
     color: Color = SurfaceLight,
-    elevation: Dp = 6.dp,
+    elevation: Dp = 5.dp,
     pressedElevation: Dp = 2.dp,
-    shadowColor: Color = ClayShadowLight,
-    highlightColor: Color = Color.White.copy(alpha = 0.85f),
+    shadowColor: Color = ClayDropShadow,
+    highlightColor: Color = Color.White.copy(alpha = 0.9f),
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(0.dp),
+    inset: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val pressActive = isPressed && enabled && onClick != null
 
-    val currentElevation by animateDpAsState(
-        targetValue = if (isPressed && enabled) pressedElevation else elevation,
+    val press by animateFloatAsState(
+        targetValue = if (pressActive) 1f else 0f,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "clayElevation"
+        label = "clayPress"
     )
-
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && enabled && onClick != null) 0.98f else 1f,
+        targetValue = if (pressActive) 0.98f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "clayScale"
     )
@@ -140,40 +230,16 @@ fun ClayCard(
     Box(
         modifier = modifier
             .scale(scale)
-            .shadow(
-                elevation = currentElevation,
+            .clayDepth(
                 shape = shape,
-                ambientColor = shadowColor,
-                spotColor = shadowColor
+                color = color,
+                elevation = elevation,
+                pressed = press,
+                inset = inset,
+                dropShadow = shadowColor,
+                highlight = highlightColor
             )
             .clip(shape)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        color,
-                        color.copy(alpha = 0.97f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(500f, 800f)
-                )
-            )
-            .drawWithContent {
-                drawContent()
-                // Top-left subtle specular highlight
-                drawRoundRect(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            highlightColor,
-                            highlightColor.copy(alpha = 0.2f),
-                            Color.Transparent
-                        ),
-                        start = Offset(0f, 0f),
-                        end = Offset(size.width * 0.8f, size.height * 0.8f)
-                    ),
-                    size = size,
-                    style = Stroke(width = 1.2.dp.toPx())
-                )
-            }
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
@@ -209,7 +275,7 @@ fun ClayButton(
     modifier: Modifier = Modifier,
     variant: ClayButtonVariant = ClayButtonVariant.Primary,
     enabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(18.dp),
+    shape: Shape = RoundedCornerShape(20.dp),
     icon: ImageVector? = null,
     text: String? = null,
     trailingIcon: ImageVector? = null,
@@ -219,87 +285,58 @@ fun ClayButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val (bgColor, textColor, highlight) = when (variant) {
-        ClayButtonVariant.Primary -> Triple(
-            PrimaryIndigo,
-            OnPrimaryIndigo,
-            Color.White.copy(alpha = 0.35f)
-        )
-        ClayButtonVariant.Secondary -> Triple(
-            SecondaryLavenderLight,
-            PrimaryIndigo,
-            Color.White.copy(alpha = 0.8f)
-        )
-        ClayButtonVariant.Accent -> Triple(
-            AccentMint,
-            OnAccentMint,
-            Color.White.copy(alpha = 0.4f)
-        )
-        ClayButtonVariant.Surface -> Triple(
-            SurfaceLight,
-            TextPrimaryLight,
-            Color.White.copy(alpha = 0.9f)
-        )
-        ClayButtonVariant.Destructive -> Triple(
-            SoftRed,
-            RedHeart,
-            Color.White.copy(alpha = 0.8f)
-        )
+    val bgColor: Color
+    val textColor: Color
+    val highlight: Color
+    val glow: Color
+    when (variant) {
+        ClayButtonVariant.Primary -> {
+            bgColor = PrimaryIndigo; textColor = OnPrimaryIndigo
+            highlight = Color.White.copy(alpha = 0.5f); glow = PrimaryIndigo.copy(alpha = 0.55f)
+        }
+        ClayButtonVariant.Secondary -> {
+            bgColor = SecondaryLavenderLight; textColor = PrimaryIndigo
+            highlight = Color.White.copy(alpha = 0.95f); glow = ClayDropShadow
+        }
+        ClayButtonVariant.Accent -> {
+            bgColor = AccentMint; textColor = OnAccentMint
+            highlight = Color.White.copy(alpha = 0.5f); glow = AccentMint.copy(alpha = 0.5f)
+        }
+        ClayButtonVariant.Surface -> {
+            bgColor = SurfaceLight; textColor = TextPrimaryLight
+            highlight = Color.White.copy(alpha = 0.95f); glow = ClayDropShadow
+        }
+        ClayButtonVariant.Destructive -> {
+            bgColor = SoftRed; textColor = RedHeart
+            highlight = Color.White.copy(alpha = 0.95f); glow = RedHeart.copy(alpha = 0.3f)
+        }
     }
 
-    val currentElevation by animateDpAsState(
-        targetValue = if (!enabled) 0.dp else if (isPressed) 2.dp else 6.dp,
+    val press by animateFloatAsState(
+        targetValue = if (isPressed && enabled) 1f else 0f,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "btnElevation"
+        label = "btnPress"
     )
-
     val scale by animateFloatAsState(
         targetValue = if (isPressed && enabled) 0.96f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "btnScale"
     )
 
-    val effectiveBg = if (enabled) bgColor else bgColor.copy(alpha = 0.5f)
     val effectiveText = if (enabled) textColor else textColor.copy(alpha = 0.5f)
 
     Box(
         modifier = modifier
             .scale(scale)
-            .shadow(
-                elevation = currentElevation,
+            .clayDepth(
                 shape = shape,
-                ambientColor = if (variant == ClayButtonVariant.Primary) PrimaryIndigo.copy(alpha = 0.35f) else ClayShadowLight,
-                spotColor = if (variant == ClayButtonVariant.Primary) PrimaryIndigo.copy(alpha = 0.45f) else ClayKeyShadowLight
+                color = if (enabled) bgColor else bgColor.copy(alpha = 0.5f),
+                elevation = if (enabled) 6.dp else 0.dp,
+                pressed = press,
+                dropShadow = glow,
+                highlight = highlight
             )
             .clip(shape)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        effectiveBg,
-                        effectiveBg.copy(alpha = 0.92f)
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(300f, 400f)
-                )
-            )
-            .drawWithContent {
-                drawContent()
-                if (enabled) {
-                    drawRoundRect(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                highlight,
-                                highlight.copy(alpha = 0.1f),
-                                Color.Transparent
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(size.width * 0.7f, size.height * 0.7f)
-                        ),
-                        size = size,
-                        style = Stroke(width = 1.2.dp.toPx())
-                    )
-                }
-            }
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -349,7 +386,7 @@ fun ClayButton(
 }
 
 /**
- * Tactile circular or rounded squircle clay icon button (for Wishlist, back, clear, settings).
+ * Tactile circular or squircle clay icon button (wishlist, back, clear, settings).
  */
 @Composable
 fun ClayIconButton(
@@ -362,19 +399,18 @@ fun ClayIconButton(
     shape: Shape = CircleShape,
     containerColor: Color = SurfaceLight,
     contentColor: Color = TextPrimaryLight,
-    elevation: Dp = 4.dp
+    elevation: Dp = 5.dp
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val currentElevation by animateDpAsState(
-        targetValue = if (isPressed) 1.dp else elevation,
+    val press by animateFloatAsState(
+        targetValue = if (isPressed) 1f else 0f,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "iconBtnElevation"
+        label = "iconBtnPress"
     )
-
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.92f else 1f,
+        targetValue = if (isPressed) 0.93f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
         label = "iconBtnScale"
     )
@@ -383,30 +419,13 @@ fun ClayIconButton(
         modifier = modifier
             .size(size)
             .scale(scale)
-            .shadow(
-                elevation = currentElevation,
+            .clayDepth(
                 shape = shape,
-                ambientColor = ClayAmbientShadowLight,
-                spotColor = ClayShadowLight
+                color = containerColor,
+                elevation = elevation,
+                pressed = press
             )
             .clip(shape)
-            .background(containerColor)
-            .drawWithContent {
-                drawContent()
-                val drawSize = this.size
-                drawRoundRect(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.85f),
-                            Color.Transparent
-                        ),
-                        start = Offset(0f, 0f),
-                        end = Offset(drawSize.width * 0.7f, drawSize.height * 0.7f)
-                    ),
-                    size = drawSize,
-                    style = Stroke(width = 1.dp.toPx())
-                )
-            }
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -424,7 +443,7 @@ fun ClayIconButton(
 }
 
 /**
- * Tactile molded clay chip / filter pill with pressed active state.
+ * Clay chip. Unselected = puffy raised pill, selected = pressed-in indigo dent.
  */
 @Composable
 fun ClayChip(
@@ -440,42 +459,31 @@ fun ClayChip(
 
     val bg = if (selected) PrimaryIndigoContainer else SurfaceLight
     val textColor = if (selected) PrimaryIndigo else TextPrimaryLight
-    val elevation = if (selected) 2.dp else if (isPressed) 1.dp else 4.dp
-    val scale = if (isPressed) 0.96f else 1f
+    val shape = RoundedCornerShape(16.dp)
+
+    val press by animateFloatAsState(
+        targetValue = if (isPressed) 1f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "chipPress"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "chipScale"
+    )
 
     Box(
         modifier = modifier
             .scale(scale)
-            .shadow(
-                elevation = elevation,
-                shape = RoundedCornerShape(14.dp),
-                ambientColor = ClayAmbientShadowLight,
-                spotColor = if (selected) PrimaryIndigo.copy(alpha = 0.25f) else ClayShadowLight
+            .clayDepth(
+                shape = shape,
+                color = bg,
+                elevation = 4.dp,
+                pressed = press,
+                inset = selected,
+                dropShadow = if (selected) PrimaryIndigo.copy(alpha = 0.25f) else ClayDropShadow
             )
-            .clip(RoundedCornerShape(14.dp))
-            .background(bg)
-            .drawWithContent {
-                drawContent()
-                drawRoundRect(
-                    brush = Brush.linearGradient(
-                        colors = if (selected) {
-                            listOf(
-                                PrimaryIndigo.copy(alpha = 0.4f),
-                                Color.Transparent
-                            )
-                        } else {
-                            listOf(
-                                Color.White.copy(alpha = 0.9f),
-                                Color.Transparent
-                            )
-                        },
-                        start = Offset(0f, 0f),
-                        end = Offset(size.width, size.height)
-                    ),
-                    size = size,
-                    style = Stroke(width = if (selected) 1.5.dp.toPx() else 1.dp.toPx())
-                )
-            }
+            .clip(shape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -528,11 +536,12 @@ fun ClayBadge(
     icon: ImageVector? = null,
     iconColor: Color = textColor
 ) {
+    val shape = RoundedCornerShape(9.dp)
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(backgroundColor)
-            .padding(horizontal = 7.dp, vertical = 3.dp),
+            .clayDepth(shape = shape, color = backgroundColor, elevation = 1.5.dp)
+            .clip(shape)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -566,7 +575,7 @@ fun ClayBadge(
 fun ClaySkeletonCard(
     modifier: Modifier = Modifier,
     height: Dp = 220.dp,
-    shape: Shape = RoundedCornerShape(22.dp)
+    shape: Shape = RoundedCornerShape(24.dp)
 ) {
     val transition = rememberInfiniteTransition(label = "shimmerTransition")
     val alpha by transition.animateFloat(
@@ -574,7 +583,7 @@ fun ClaySkeletonCard(
         targetValue = 0.95f,
         animationSpec = infiniteRepeatable(
             animation = tween(900),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+            repeatMode = RepeatMode.Reverse
         ),
         label = "shimmerAlpha"
     )
@@ -583,14 +592,8 @@ fun ClaySkeletonCard(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .shadow(
-                elevation = 4.dp,
-                shape = shape,
-                ambientColor = ClayAmbientShadowLight,
-                spotColor = ClayShadowLight
-            )
+            .clayDepth(shape = shape, color = SurfaceLight, elevation = 5.dp)
             .clip(shape)
-            .background(SurfaceLight)
             .padding(12.dp)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -598,32 +601,37 @@ fun ClaySkeletonCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
+                    .clayDepth(
+                        shape = RoundedCornerShape(16.dp),
+                        color = SurfaceVariantLight.copy(alpha = alpha),
+                        elevation = 3.dp,
+                        inset = true
+                    )
                     .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceVariantLight.copy(alpha = alpha))
             )
             Spacer(modifier = Modifier.height(12.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.5f)
                     .height(14.dp)
+                    .clayDepth(RoundedCornerShape(7.dp), SurfaceVariantLight.copy(alpha = alpha), 1.dp)
                     .clip(RoundedCornerShape(7.dp))
-                    .background(SurfaceVariantLight.copy(alpha = alpha))
             )
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
                     .height(16.dp)
+                    .clayDepth(RoundedCornerShape(8.dp), SurfaceVariantLight.copy(alpha = alpha), 1.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(SurfaceVariantLight.copy(alpha = alpha))
             )
             Spacer(modifier = Modifier.height(8.dp))
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.4f)
                     .height(18.dp)
+                    .clayDepth(RoundedCornerShape(9.dp), PrimaryIndigoContainer.copy(alpha = alpha), 1.dp)
                     .clip(RoundedCornerShape(9.dp))
-                    .background(PrimaryIndigoContainer.copy(alpha = alpha))
             )
         }
     }

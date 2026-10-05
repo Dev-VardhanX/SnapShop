@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -167,9 +168,10 @@ fun HomeScreenContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(22.dp)
+                .padding(paddingValues),
+            // contentPadding (not Modifier.padding) so clay shadows aren't clipped at the edges
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Hero Greeting Headline
             item {
@@ -277,7 +279,8 @@ fun HomeScreenContent(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             items(
                                 items = recentlyViewedProducts.take(8),
@@ -539,11 +542,13 @@ private fun ClaySearchBar(
     onSearch: () -> Unit,
     onCameraShortcut: () -> Unit
 ) {
+    // inset = pressed-in clay dent, like a real input field
     ClayCard(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        color = SurfaceLight,
-        elevation = 6.dp
+        shape = RoundedCornerShape(24.dp),
+        color = Color(0xFFF4F5FC),
+        elevation = 6.dp,
+        inset = true
     ) {
         Row(
             modifier = Modifier
