@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -157,6 +158,7 @@ fun HomeScreenContent(
 
     Scaffold(
         containerColor = BackgroundLight,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             HomeTopBar(
                 wishlistCount = wishlistProducts.size,
@@ -170,7 +172,7 @@ fun HomeScreenContent(
                 .fillMaxSize()
                 .padding(paddingValues),
             // contentPadding (not Modifier.padding) so clay shadows aren't clipped at the edges
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 10.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             // Hero Greeting Headline

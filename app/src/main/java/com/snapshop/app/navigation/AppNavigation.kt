@@ -8,7 +8,12 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -19,8 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -91,30 +98,24 @@ fun AppNavigation() {
     CompositionLocalProvider(LocalSnapShopSnackbarHostState provides snackbarHostState) {
         Scaffold(
             containerColor = BackgroundLight,
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            bottomBar = {
-                if (showBottomBar) {
-                    val cleanRoute = currentRoute?.split("?")?.get(0) ?: Screen.Home.route
-                    BottomNavBar(
-                        currentRoute = cleanRoute,
-                        onNavigate = { destination ->
-                            navController.navigate(destination) {
-                                popUpTo(Screen.Home.route) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    )
-                }
+            contentWindowInsets = WindowInsets.statusBars,
+            snackbarHost = {
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.padding(bottom = if (showBottomBar) 96.dp else 16.dp)
+                )
             }
         ) { paddingValues ->
-            NavHost(
-                navController = navController,
-                startDestination = Screen.Splash.route,
-                modifier = Modifier.padding(paddingValues)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = paddingValues.calculateTopPadding())
             ) {
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.Splash.route,
+                    modifier = Modifier.fillMaxSize()
+                ) {
                 composable(Screen.Splash.route) {
                     com.snapshop.app.ui.splash.SplashScreen(
                         onSplashFinished = {
@@ -288,6 +289,29 @@ fun AppNavigation() {
                 }
 
             }
+
+            if (showBottomBar) {
+                val cleanRoute = currentRoute?.split("?")?.get(0) ?: Screen.Home.route
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                ) {
+                    BottomNavBar(
+                        currentRoute = cleanRoute,
+                        onNavigate = { destination ->
+                            navController.navigate(destination) {
+                                popUpTo(Screen.Home.route) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                }
+            }
         }
     }
+}
 }

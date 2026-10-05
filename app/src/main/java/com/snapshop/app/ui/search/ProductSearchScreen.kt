@@ -390,7 +390,7 @@ fun ProductSearchContent(
                         columns = GridCells.Fixed(2),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
-                        contentPadding = PaddingValues(bottom = 80.dp),
+                        contentPadding = PaddingValues(bottom = 120.dp),
                         modifier = Modifier.fillMaxSize()
                     ) {
                         itemsIndexed(
