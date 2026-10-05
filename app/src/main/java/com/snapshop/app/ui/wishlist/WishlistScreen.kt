@@ -54,7 +54,6 @@ fun WishlistScreen(
     viewModel: WishlistViewModel = viewModel()
 ) {
     val products by viewModel.wishlistProducts.collectAsState()
-
     Scaffold(
         containerColor = BackgroundLight,
         topBar = {
@@ -120,7 +119,7 @@ fun WishlistScreen(
         ) {
             if (products.isEmpty()) {
                 ClayEmptyState(
-                    icon = Icons.Default.FavoriteBorder,
+                    useLogo = true,
                     title = "Your wishlist is waiting",
                     description = "Save products you love to track their prices across top stores and find them here later."
                 )

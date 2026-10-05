@@ -56,6 +56,9 @@ import com.snapshop.app.ui.theme.SurfaceVariantLight
 import com.snapshop.app.ui.theme.TextPrimaryLight
 import com.snapshop.app.ui.theme.TextSecondaryLight
 
+import androidx.compose.ui.res.painterResource
+import com.snapshop.app.R
+
 /**
  * Premium 2-Column Claymorphic Product Card.
  * Soft elevated surface, prominent product visual, tactile wishlist action,
@@ -69,6 +72,10 @@ fun ProductCard(
     modifier: Modifier = Modifier,
     onViewDealClick: ((Product) -> Unit)? = null
 ) {
+    val imageBoxBg = SurfaceVariantLight
+    val titleColor = TextPrimaryLight
+    val subtitleColor = TextSecondaryLight
+
     ClayCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
@@ -87,10 +94,10 @@ fun ProductCard(
                     .fillMaxWidth()
                     .aspectRatio(1.05f)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceVariantLight),
+                    .background(imageBoxBg),
                 contentAlignment = Alignment.Center
             ) {
-                val fallbackPainter = rememberVectorPainter(Icons.Default.ShoppingBag)
+                val fallbackPainter = painterResource(id = R.drawable.ic_snapshop_logo)
                 val imageUrl = product.imageUrl?.trim()
 
                 if (!imageUrl.isNullOrBlank()) {
@@ -105,11 +112,9 @@ fun ProductCard(
                         error = fallbackPainter
                     )
                 } else {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingBag,
-                        contentDescription = null,
-                        tint = TextSecondaryLight.copy(alpha = 0.4f),
-                        modifier = Modifier.size(40.dp)
+                    SnapShopLogo(
+                        size = 48.dp,
+                        contentDescription = "SnapShop Product"
                     )
                 }
 
@@ -138,8 +143,8 @@ fun ProductCard(
                 if (!source.isNullOrBlank()) {
                     ClayBadge(
                         text = source.uppercase(),
-                        backgroundColor = SurfaceVariantLight,
-                        textColor = TextSecondaryLight
+                        backgroundColor = imageBoxBg,
+                        textColor = subtitleColor
                     )
                 } else {
                     Spacer(modifier = Modifier.width(1.dp))
@@ -177,7 +182,7 @@ fun ProductCard(
                 text = product.title ?: "Product",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = TextPrimaryLight,
+                color = titleColor,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 17.sp,
@@ -205,7 +210,7 @@ fun ProductCard(
                         text = "Check Deal",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        color = TextSecondaryLight
+                        color = subtitleColor
                     )
                 }
 
@@ -213,11 +218,12 @@ fun ProductCard(
                     Text(
                         text = "(${product.reviewsCount})",
                         fontSize = 11.sp,
-                        color = TextSecondaryLight
+                        color = subtitleColor
                     )
                 }
             }
         }
+
     }
 }
 

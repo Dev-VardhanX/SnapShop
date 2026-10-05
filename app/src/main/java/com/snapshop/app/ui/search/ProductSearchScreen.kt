@@ -59,6 +59,9 @@ import com.snapshop.app.ui.components.FilterSortSheet
 import com.snapshop.app.ui.components.PriceRangeFilter
 import com.snapshop.app.ui.components.ProductCard
 import com.snapshop.app.ui.components.SortOption
+import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.material3.LocalTextStyle
+import com.snapshop.app.ui.components.SnapShopLogo
 import com.snapshop.app.ui.theme.BackgroundLight
 import com.snapshop.app.ui.theme.ClayBadge
 import com.snapshop.app.ui.theme.ClayButton
@@ -71,8 +74,10 @@ import com.snapshop.app.ui.theme.PrimaryIndigo
 import com.snapshop.app.ui.theme.PrimaryIndigoContainer
 import com.snapshop.app.ui.theme.SnapShopTheme
 import com.snapshop.app.ui.theme.SurfaceLight
+import com.snapshop.app.ui.theme.SurfaceVariantLight
 import com.snapshop.app.ui.theme.TextPrimaryLight
 import com.snapshop.app.ui.theme.TextSecondaryLight
+import com.snapshop.app.ui.theme.TextTertiaryLight
 import kotlinx.coroutines.launch
 
 @Composable
@@ -175,17 +180,31 @@ fun ProductSearchContent(
                         value = uiState.query,
                         onValueChange = onQueryChange,
                         modifier = Modifier.weight(1f),
+                        textStyle = LocalTextStyle.current.copy(
+                            color = TextPrimaryLight,
+                            fontSize = 14.sp
+                        ),
                         placeholder = {
                             Text(
                                 text = "Search products...",
                                 fontSize = 14.sp,
-                                color = Color.Black
+                                color = TextTertiaryLight
                             )
                         },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { onSearch(null) }),
                         colors = TextFieldDefaults.colors(
+                            focusedTextColor = TextPrimaryLight,
+                            unfocusedTextColor = TextPrimaryLight,
+                            disabledTextColor = TextTertiaryLight,
+                            cursorColor = PrimaryIndigo,
+                            focusedPlaceholderColor = TextTertiaryLight,
+                            unfocusedPlaceholderColor = TextTertiaryLight,
+                            selectionColors = TextSelectionColors(
+                                handleColor = PrimaryIndigo,
+                                backgroundColor = PrimaryIndigo.copy(alpha = 0.25f)
+                            ),
                             focusedContainerColor = Color.Transparent,
                             unfocusedContainerColor = Color.Transparent,
                             disabledContainerColor = Color.Transparent,
@@ -356,9 +375,9 @@ fun ProductSearchContent(
                 // Error State
                 uiState.error != null -> {
                     ClayEmptyState(
-                        icon = Icons.Default.Refresh,
-                        title = "Something went wrong",
-                        description = "We couldn't retrieve products right now. Please try again.",
+                        useLogo = true,
+                        title = "Couldn't reach store listings",
+                        description = "We couldn't retrieve products right now. Please check your network and try again.",
                         actionText = "Try Again",
                         onActionClick = { onSearch(null) }
                     )
@@ -412,7 +431,7 @@ fun ProductSearchContent(
                 // Initial empty state before search
                 else -> {
                     ClayEmptyState(
-                        icon = Icons.Default.ShoppingBag,
+                        useLogo = true,
                         title = "Find products across top stores",
                         description = "Type any product or brand name to compare real-time prices across Amazon, Flipkart, and more.",
                         actionText = "Try Searching 'Wireless Earbuds'",

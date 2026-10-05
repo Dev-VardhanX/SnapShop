@@ -51,6 +51,9 @@ import com.snapshop.app.ui.theme.SurfaceLight
 import com.snapshop.app.ui.theme.TextPrimaryLight
 import com.snapshop.app.ui.theme.TextSecondaryLight
 
+import com.snapshop.app.ui.components.SnapShopLogo
+import com.snapshop.app.ui.components.SnapShopLogoBadge
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -169,6 +172,47 @@ fun SettingsScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
+            // Official Brand Identity Card
+            ClayCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
+                color = SurfaceLight,
+                elevation = 5.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SnapShopLogoBadge(
+                        size = 56.dp,
+                        logoSize = 44.dp,
+                        elevation = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "SnapShop",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 19.sp,
+                            color = TextPrimaryLight,
+                            letterSpacing = (-0.3).sp
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Smart Visual & Price Discovery v${BuildConfig.VERSION_NAME}",
+                            fontSize = 12.sp,
+                            color = TextSecondaryLight
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+
+
             // App Information Section
             SettingsSectionHeader("Application")
 
@@ -180,7 +224,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     SettingsItem(
-                        icon = Icons.Default.ShoppingBag,
+                        useLogo = true,
                         title = "About SnapShop",
                         subtitle = "Find anything. Shop smarter. Compare live prices."
                     )
@@ -193,7 +237,7 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Data Management Section
             SettingsSectionHeader("Data & Storage")
@@ -237,7 +281,8 @@ private fun SettingsSectionHeader(title: String) {
 
 @Composable
 private fun SettingsItem(
-    icon: ImageVector,
+    icon: ImageVector? = null,
+    useLogo: Boolean = false,
     title: String,
     subtitle: String,
     onClick: (() -> Unit)? = null
@@ -256,12 +301,19 @@ private fun SettingsItem(
                 .background(PrimaryIndigoContainer),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = PrimaryIndigo,
-                modifier = Modifier.size(20.dp)
-            )
+            if (useLogo) {
+                SnapShopLogo(
+                    size = 30.dp,
+                    contentDescription = "SnapShop Brand Identity"
+                )
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = PrimaryIndigo,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(14.dp))
@@ -282,3 +334,4 @@ private fun SettingsItem(
         }
     }
 }
+

@@ -77,6 +77,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.snapshop.app.data.repository.ImageSearchResult
+import com.snapshop.app.ui.components.SnapShopLogo
+import com.snapshop.app.ui.components.SnapShopLogoBadge
 import com.snapshop.app.ui.theme.BackgroundLight
 import com.snapshop.app.ui.theme.ClayButton
 import com.snapshop.app.ui.theme.ClayButtonVariant
@@ -173,7 +175,11 @@ fun ImageSearchScreen(
                     color = TextPrimaryLight
                 )
 
-                Spacer(modifier = Modifier.size(42.dp))
+                SnapShopLogoBadge(
+                    size = 40.dp,
+                    logoSize = 28.dp,
+                    elevation = 2.dp
+                )
             }
         }
     ) { paddingValues ->
@@ -644,11 +650,9 @@ private fun ClayPermissionContent(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.CameraAlt,
-                    contentDescription = null,
-                    modifier = Modifier.size(46.dp),
-                    tint = PrimaryIndigo
+                SnapShopLogo(
+                    size = 64.dp,
+                    contentDescription = "SnapShop Camera Search"
                 )
             }
         }

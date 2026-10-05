@@ -133,7 +133,7 @@ fun RecentlyViewedContent(
         ) {
             if (products.isEmpty()) {
                 ClayEmptyState(
-                    icon = Icons.Default.Schedule,
+                    useLogo = true,
                     title = "No recently viewed products",
                     description = "Products you inspect or explore will automatically appear here for convenient reference."
                 )

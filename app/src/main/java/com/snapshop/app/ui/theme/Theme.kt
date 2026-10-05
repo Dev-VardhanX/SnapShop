@@ -1,7 +1,6 @@
 package com.snapshop.app.ui.theme
 
 import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
@@ -61,7 +60,7 @@ val ClayShapes = Shapes(
 
 @Composable
 fun SnapShopTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false, // SnapShop defaults to Light Claymorphism
     dynamicColor: Boolean = false, // Keep consistent clay brand colors
     content: @Composable () -> Unit
 ) {

@@ -33,6 +33,7 @@ import com.snapshop.app.ui.recentlyviewed.RecentlyViewedScreen
 import com.snapshop.app.ui.search.ProductSearchScreen
 import com.snapshop.app.ui.search.ProductSearchViewModel
 import com.snapshop.app.ui.settings.SettingsScreen
+import com.snapshop.app.ui.theme.BackgroundLight
 import com.snapshop.app.ui.wishlist.WishlistScreen
 import java.net.URLDecoder
 
@@ -61,7 +62,7 @@ fun AppNavigation() {
 
     CompositionLocalProvider(LocalSnapShopSnackbarHostState provides snackbarHostState) {
         Scaffold(
-            containerColor = com.snapshop.app.ui.theme.BackgroundLight,
+            containerColor = BackgroundLight,
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 if (showBottomBar) {
@@ -83,9 +84,19 @@ fun AppNavigation() {
         ) { paddingValues ->
             NavHost(
                 navController = navController,
-                startDestination = Screen.Home.route,
+                startDestination = Screen.Splash.route,
                 modifier = Modifier.padding(paddingValues)
             ) {
+                composable(Screen.Splash.route) {
+                    com.snapshop.app.ui.splash.SplashScreen(
+                        onSplashFinished = {
+                            navController.navigate(Screen.Home.route) {
+                                popUpTo(Screen.Splash.route) { inclusive = true }
+                            }
+                        }
+                    )
+                }
+
                 composable(Screen.Home.route) {
                     HomeScreen(
                         onSearchQuerySubmit = { query ->
@@ -243,8 +254,11 @@ fun AppNavigation() {
                 }
 
                 composable(Screen.Settings.route) {
-                    SettingsScreen(onBackClick = { navController.popBackStack() })
+                    SettingsScreen(
+                        onBackClick = { navController.popBackStack() }
+                    )
                 }
+
             }
         }
     }

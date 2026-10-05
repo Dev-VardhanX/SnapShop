@@ -69,6 +69,10 @@ import coil.compose.AsyncImage
 import com.snapshop.app.data.local.entity.SearchHistoryEntity
 import com.snapshop.app.data.repository.ProductRepository
 import com.snapshop.app.domain.Product
+import androidx.compose.foundation.text.selection.TextSelectionColors
+import androidx.compose.material3.LocalTextStyle
+import com.snapshop.app.ui.components.SnapShopLogo
+import com.snapshop.app.ui.components.SnapShopLogoBadge
 import com.snapshop.app.ui.theme.AccentMintDark
 import com.snapshop.app.ui.theme.BackgroundLight
 import com.snapshop.app.ui.theme.ClayButton
@@ -85,6 +89,7 @@ import com.snapshop.app.ui.theme.SurfaceLight
 import com.snapshop.app.ui.theme.SurfaceVariantLight
 import com.snapshop.app.ui.theme.TextPrimaryLight
 import com.snapshop.app.ui.theme.TextSecondaryLight
+import com.snapshop.app.ui.theme.TextTertiaryLight
 
 data class CategoryItem(
     val title: String,
@@ -365,26 +370,13 @@ private fun HomeTopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // SnapShop 3D Logo Badge
+        // Official SnapShop Logo & Brand Title
         Row(verticalAlignment = Alignment.CenterVertically) {
-            ClayCard(
-                modifier = Modifier.size(44.dp),
-                shape = RoundedCornerShape(14.dp),
-                color = PrimaryIndigo,
-                elevation = 5.dp
-            ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingBag,
-                        contentDescription = "SnapShop",
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
+            SnapShopLogoBadge(
+                size = 44.dp,
+                logoSize = 34.dp,
+                elevation = 4.dp
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -516,10 +508,10 @@ private fun HomeHeroSection() {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // 3D Molded Floating Emblem
+            // 3D Molded Floating SnapShop Emblem
             ClayCard(
                 modifier = Modifier.size(68.dp),
-                shape = CircleShape,
+                shape = RoundedCornerShape(20.dp),
                 color = PrimaryIndigoContainer,
                 elevation = 4.dp
             ) {
@@ -527,11 +519,9 @@ private fun HomeHeroSection() {
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        tint = PrimaryIndigo,
-                        modifier = Modifier.size(34.dp)
+                    SnapShopLogo(
+                        size = 50.dp,
+                        contentDescription = "SnapShop Brand Emblem"
                     )
                 }
             }
@@ -572,17 +562,31 @@ private fun ClaySearchBar(
                 value = query,
                 onValueChange = onQueryChange,
                 modifier = Modifier.weight(1f),
+                textStyle = LocalTextStyle.current.copy(
+                    color = TextPrimaryLight,
+                    fontSize = 14.sp
+                ),
                 placeholder = {
                     Text(
                         text = "Search products, brands, models...",
                         fontSize = 14.sp,
-                        color = TextSecondaryLight.copy(alpha = 0.8f)
+                        color = TextTertiaryLight
                     )
                 },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
                 colors = TextFieldDefaults.colors(
+                    focusedTextColor = TextPrimaryLight,
+                    unfocusedTextColor = TextPrimaryLight,
+                    disabledTextColor = TextTertiaryLight,
+                    cursorColor = PrimaryIndigo,
+                    focusedPlaceholderColor = TextTertiaryLight,
+                    unfocusedPlaceholderColor = TextTertiaryLight,
+                    selectionColors = TextSelectionColors(
+                        handleColor = PrimaryIndigo,
+                        backgroundColor = PrimaryIndigo.copy(alpha = 0.25f)
+                    ),
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
                     disabledContainerColor = Color.Transparent,
@@ -616,6 +620,7 @@ private fun ClaySearchBar(
         }
     }
 }
+
 
 /**
  * Signature Visual Search Clay Showcase Card.
@@ -686,7 +691,7 @@ private fun VisualSearchClayCard(
             ) {
                 ClayButton(
                     onClick = onCameraClick,
-                    text = "Take Photo",
+                    text = "Photo",
                     icon = Icons.Default.CameraAlt,
                     variant = ClayButtonVariant.Primary,
                     modifier = Modifier.weight(1f)
@@ -694,7 +699,7 @@ private fun VisualSearchClayCard(
 
                 ClayButton(
                     onClick = onGalleryClick,
-                    text = "From Gallery",
+                    text = "Gallery",
                     icon = Icons.Default.PhotoLibrary,
                     variant = ClayButtonVariant.Secondary,
                     modifier = Modifier.weight(1f)

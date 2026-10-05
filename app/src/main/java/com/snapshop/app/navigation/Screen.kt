@@ -2,6 +2,7 @@ package com.snapshop.app.navigation
 
 sealed class Screen(val route: String) {
 
+    data object Splash : Screen("splash")
     data object Home : Screen("home")
 
     data object SearchResults : Screen("search_results?query={query}") {

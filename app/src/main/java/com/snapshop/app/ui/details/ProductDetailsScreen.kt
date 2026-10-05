@@ -51,6 +51,9 @@ import com.snapshop.app.domain.Product
 import com.snapshop.app.ui.components.isValidMerchantUrl
 import com.snapshop.app.ui.theme.AccentMintDark
 import com.snapshop.app.ui.theme.AmberStar
+import androidx.compose.ui.res.painterResource
+import com.snapshop.app.R
+import com.snapshop.app.ui.components.SnapShopLogo
 import com.snapshop.app.ui.theme.BackgroundLight
 import com.snapshop.app.ui.theme.ClayBadge
 import com.snapshop.app.ui.theme.ClayButton
@@ -169,7 +172,7 @@ fun ProductDetailsScreen(
                             .padding(20.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        val fallback = rememberVectorPainter(Icons.Default.ShoppingBag)
+                        val fallback = painterResource(id = R.drawable.ic_snapshop_logo)
                         if (!currentProduct.imageUrl.isNullOrBlank()) {
                             AsyncImage(
                                 model = currentProduct.imageUrl,
@@ -180,11 +183,9 @@ fun ProductDetailsScreen(
                                 error = fallback
                             )
                         } else {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingBag,
-                                contentDescription = null,
-                                tint = TextSecondaryLight.copy(alpha = 0.4f),
-                                modifier = Modifier.size(64.dp)
+                            SnapShopLogo(
+                                size = 72.dp,
+                                contentDescription = "SnapShop Product"
                             )
                         }
                     }
@@ -504,11 +505,9 @@ private fun ClayOfferCard(
                         contentScale = ContentScale.Fit
                     )
                 } else {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingBag,
-                        contentDescription = null,
-                        tint = TextSecondaryLight.copy(alpha = 0.4f),
-                        modifier = Modifier.size(24.dp)
+                    SnapShopLogo(
+                        size = 32.dp,
+                        contentDescription = "SnapShop Product"
                     )
                 }
             }

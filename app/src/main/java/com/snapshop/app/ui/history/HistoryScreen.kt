@@ -172,7 +172,7 @@ fun HistoryScreen(
         ) {
             if (historyList.isEmpty()) {
                 ClayEmptyState(
-                    icon = Icons.Default.History,
+                    useLogo = true,
                     title = "No search history yet",
                     description = "Searches you perform using text or camera will automatically be saved here for quick access."
                 )

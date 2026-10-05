@@ -634,7 +634,8 @@ fun ClaySkeletonCard(
  */
 @Composable
 fun ClayEmptyState(
-    icon: ImageVector,
+    icon: ImageVector? = null,
+    useLogo: Boolean = false,
     title: String,
     description: String,
     modifier: Modifier = Modifier,
@@ -658,12 +659,20 @@ fun ClayEmptyState(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = PrimaryIndigo,
-                    modifier = Modifier.size(46.dp)
-                )
+                if (useLogo || icon == null) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = com.snapshop.app.R.drawable.ic_snapshop_logo),
+                        contentDescription = "SnapShop",
+                        modifier = Modifier.size(64.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = PrimaryIndigo,
+                        modifier = Modifier.size(46.dp)
+                    )
+                }
             }
         }
 
@@ -697,3 +706,4 @@ fun ClayEmptyState(
         }
     }
 }
+
