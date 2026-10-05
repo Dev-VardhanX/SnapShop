@@ -188,7 +188,8 @@ fun ProductSearchContent(
                             Text(
                                 text = "Search products...",
                                 fontSize = 14.sp,
-                                color = TextTertiaryLight
+                                color = TextTertiaryLight,
+                                maxLines = 1
                             )
                         },
                         singleLine = true,

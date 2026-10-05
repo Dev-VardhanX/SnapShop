@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -35,9 +36,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
 import com.snapshop.app.navigation.Screen
 import com.snapshop.app.ui.theme.PrimaryIndigo
 import com.snapshop.app.ui.theme.PrimaryIndigoContainer
+import com.snapshop.app.ui.theme.SnapShopTheme
 import com.snapshop.app.ui.theme.SurfaceLight
 import com.snapshop.app.ui.theme.TextSecondaryLight
 import com.snapshop.app.ui.theme.clayDepth
@@ -91,11 +94,19 @@ fun BottomNavBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 items.forEach { item ->
+
+                    val currentBaseRoute = currentRoute?.substringBefore("?")
+                    val itemBaseRoute = item.route.substringBefore("?")
+
+                    val isSelected = currentBaseRoute == itemBaseRoute
+
                     ClayNavItem(
                         item = item,
-                        isSelected = currentRoute == item.route,
+                        isSelected = isSelected,
                         onClick = {
-                            if (currentRoute != item.route) onNavigate(item.route)
+                            if (!isSelected) {
+                                onNavigate(item.route)
+                            }
                         }
                     )
                 }
@@ -171,5 +182,16 @@ private fun ClayNavItem(
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun BottomNavBarPreview() {
+    SnapShopTheme {
+        BottomNavBar(
+            currentRoute = Screen.Home.route,
+            onNavigate = {}
+        )
     }
 }
