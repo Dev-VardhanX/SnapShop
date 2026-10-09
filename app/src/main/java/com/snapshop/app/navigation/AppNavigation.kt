@@ -208,6 +208,8 @@ fun AppNavigation() {
                                 openMerchantLink(
                                     context = activity,
                                     buyUrl = buyUrl,
+                                    merchantName = currentSelectedProduct.source,
+                                    productTitle = currentSelectedProduct.title,
                                     snackbarHostState = snackbarHostState,
                                     scope = scope
                                 )

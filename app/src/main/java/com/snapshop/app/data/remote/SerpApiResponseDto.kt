@@ -35,6 +35,9 @@ data class SerpApiProductDto(
     @SerializedName("serpapi_thumbnail")
     val serpapiThumbnail: String? = null,
 
+    @SerializedName("direct_link")
+    val directLink: String? = null,
+
     @SerializedName("link")
     val link: String? = null,
 

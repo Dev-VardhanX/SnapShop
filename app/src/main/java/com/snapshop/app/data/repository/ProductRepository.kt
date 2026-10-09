@@ -8,6 +8,7 @@ import com.snapshop.app.data.local.entity.SearchHistoryEntity
 import com.snapshop.app.data.local.entity.WishlistEntity
 import com.snapshop.app.data.remote.RetrofitClient
 import com.snapshop.app.domain.Product
+import com.snapshop.app.util.MerchantUrlResolver
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -45,6 +46,7 @@ class ProductRepository(context: Context) {
             return results.map { dto ->
                 val pid = dto.productId ?: dto.title?.hashCode()?.toString() ?: ""
                 val rawUrl = when {
+                    !dto.directLink.isNullOrBlank() -> dto.directLink
                     !dto.link.isNullOrBlank() -> dto.link
                     !dto.productLink.isNullOrBlank() -> dto.productLink
                     !dto.productId.isNullOrBlank() -> "https://www.google.com/shopping/product/${dto.productId}?gl=in&hl=en"
@@ -61,13 +63,19 @@ class ProductRepository(context: Context) {
                 val resolvedImage = dto.thumbnail?.takeIf { it.isNotBlank() }
                     ?: dto.serpapiThumbnail?.takeIf { it.isNotBlank() }
 
+                val resolvedBuyUrl = MerchantUrlResolver.resolveDirectMerchantUrl(
+                    rawUrl = rawUrl,
+                    source = resolvedSource,
+                    title = dto.title
+                )
+
                 Product(
                     id = dto.productId,
                     title = dto.title,
                     price = dto.price,
                     source = resolvedSource,
                     imageUrl = resolvedImage,
-                    buyUrl = rawUrl,
+                    buyUrl = resolvedBuyUrl,
                     rating = dto.rating,
                     reviewsCount = dto.reviews,
                     isWishlisted = wishlistIds.contains(pid)

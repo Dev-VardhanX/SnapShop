@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -114,6 +115,7 @@ fun ProductDetailsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(BackgroundLight)
+                    .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 14.dp)
             ) {
                 Row(
@@ -134,9 +136,19 @@ fun ProductDetailsScreen(
                     )
 
                     // Primary CTA: View Deal
+//                    val dealButtonText = when {
+//                        !isDealValid -> "Deal Unavailable"
+//                        !currentProduct.source.isNullOrBlank() &&
+//                            !currentProduct.source.contains("Google", ignoreCase = true) &&
+//                            !currentProduct.source.contains("Multiple", ignoreCase = true) &&
+//                            currentProduct.source.length <= 15 -> "View on ${currentProduct.source}"
+//                        else -> "View Deal"
+//                    }
+                    val dealButtonText = if (isDealValid) "View Deal" else "Deal Unavailable"
+
                     ClayButton(
                         onClick = { onOpenMerchantLink(currentProduct.buyUrl) },
-                        text = if (isDealValid) "View Deal" else "Deal Unavailable",
+                        text = dealButtonText,
                         icon = Icons.AutoMirrored.Filled.OpenInNew,
                         variant = if (isDealValid) ClayButtonVariant.Primary else ClayButtonVariant.Secondary,
                         enabled = isDealValid,
